@@ -71,21 +71,40 @@ def get_barcode(frame):
     return zbar.decode(frame)
 
 
-# this is just a basic barcode scanner that prints data to the terminal
-# it has no sanitization or anything, and works in black and white in order to cut
-# down on memory usage. The next thing to do with this is put it in a seperate thread
-# and have it communicate somehow with the main thread.
-control = True
-while control:
-    data = get_frame()
-    detected_barcodes = get_barcode(data)
-    for barcode in detected_barcodes:
-        data = barcode.data.decode()
-        data = json.loads(data)
-        print(data["data"])
-        control = False
-    else:
-        print("No barcode detected.")
-    time.sleep(1)
+# this is just a basic barcode scanner that reads in JSON data
+# it has little sanitization, and works in black and white in order to cut
+# down on memory usage.
+def barcode_scanner(pipe):
+    """Barcode scanner process"""
+    while True:
+        last_sent = None
+        try:
+            data = get_frame()
+        except cv2.error:
+            print("Camera disabled. Sleeping...")
+            time.sleep(20)
+        detected_barcodes = get_barcode(data)
+        for barcode in detected_barcodes:
+            data = barcode.data.decode()
+            try:
+                data = json.loads(data)
+            except json.decoder.JSONDecodeError:
+                continue
+            if data != last_sent:
+                pipe.send(data)
+                last_sent = data
+        time.sleep(1)
 
+
+parent_conn, child_conn = multiprocessing.Pipe()
+barcoder_proc = multiprocessing.Process(target=barcode_scanner, args=(parent_conn,))
+barcoder_proc.start()
+count = 0
+while True:
+    data = child_conn.recv()
+    print(json.dumps(data, indent=1))
+    count += 1
+    print(count)
+    time.sleep(1)
+barcoder_proc.join()
 WEBCAM.release()
