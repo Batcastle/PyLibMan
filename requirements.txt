@@ -1,0 +1,3 @@
+pyzbar-x>=0.2.1
+opencv-python>=4.5.3.56
+numpy>=1.17.4
