@@ -184,7 +184,7 @@ while True:
                 data = qr_query(data, book_pipe)
             else:
                 data = {"status": 0}
-            print("Return: ", json.dumps(data, indent=1))
+            ui_pipe.send(data)
         elif ui_pipe.poll():
             ui_request = ui_pipe.recv()
             if ui_request == "shut_down":

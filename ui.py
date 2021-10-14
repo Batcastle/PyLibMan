@@ -26,6 +26,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 import common
+import time
 
 
 class PyLibMan_UI(Gtk.Window):
@@ -49,6 +50,23 @@ class PyLibMan_UI(Gtk.Window):
         label.set_justify(Gtk.Justification.CENTER)
         label = self._set_default_margins(label)
         self.page0.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup("""<b>Waiting for Book...</b>""")
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.page0.attach(label1, 1, 2, 5, 1)
+
+        label2 = Gtk.Label()
+        label2.set_markup("""----""")
+        label2.set_justify(Gtk.Justification.CENTER)
+        label2 = self._set_default_margins(label2)
+        self.page0.attach(label2, 1, 3, 5, 1)
+
+        button = Gtk.Button.new_with_label("Start Scanning")
+        button.connect("clicked", self.check_out)
+        button = self._set_default_margins(button)
+        self.page0.attach(button, 1, 4, 1, 1)
 
         self.page1 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
 
@@ -83,6 +101,45 @@ class PyLibMan_UI(Gtk.Window):
         self.page4.attach(label, 1, 1, 5, 1)
 
         self.main_menu("clicked")
+
+    def check_out(self, widget):
+        """Check out a book"""
+        children = self.page0.get_children()
+        element = []
+        for each in children:
+            # This is a bit of a hack but works
+            if "<class 'gi.overrides.Gtk.Label'>" == str(type(each)):
+                element.append(each)
+        for each in element:
+            if ((each.get_text() == "----") or ("uid" in each.get_text())):
+                details = each
+            if (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text())):
+                status = each
+        input = self.pipe.recv()
+        print(input)
+        if "status" in input[0]:
+            if input[0]["status"] == 0:
+                details.set_markup("An Error has occured")
+        elif input == []:
+            details.set_markup("Book Not Found")
+        elif "check_in_status" not in input[0]:
+            details.set_markup("Not a Book")
+        else:
+            text = f"""
+            <b>uid</b>: {input[0]["uid"]}
+           <b>Name</b>: {input[0]["name"]}
+         <b>Status</b>: {input[0]["check_in_status"]["status"]}"""
+            details.set_markup(text)
+            status.set_markup("<b>Book Found</b>")
+        self.page0.show_all()
+
+
+
+    def renew(self, widget):
+        """Renew a book"""
+
+    def check_in(self, widget):
+        """Check a book in"""
 
     def _set_default_margins(self, widget):
         """Set default margin size"""
@@ -239,7 +296,6 @@ Exiting now will cause any unsaved data to be lost.""")
         self.grid.attach(button1, 3, 4, 1, 1)
 
         self.show_all()
-
 
 def show(pipe):
     """Show Main UI"""
