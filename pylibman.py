@@ -33,6 +33,7 @@ import os
 import common
 import barcode
 import db
+import ui
 
 
 
@@ -43,17 +44,29 @@ if sys.version_info[0] == 2:
 # Set up vars
 ARGC = len(sys.argv)
 
+
+def qr_query(request, pipe_handle):
+    """Make a request from QR Code data"""
+    get = common.get_template
+    get["filter"]["field"] = "uid"
+    get["filter"]["compare"] = request["uid"]
+    pipe_handle.send(get)
+    return pipe_handle.recv()
+
+
 # Initialize Webcam
 WEBCAM = cv2.VideoCapture(0)
 
 parent_conn, bar_pipe = multiprocessing.Pipe()
 parent_conn2, user_pipe = multiprocessing.Pipe()
 parent_conn3, book_pipe = multiprocessing.Pipe()
+parent_conn4, ui_pipe = multiprocessing.Pipe()
 procs = []
 procs.append(multiprocessing.Process(target=barcode.barcode_scanner,
                                      args=(parent_conn, WEBCAM)))
 procs.append(multiprocessing.Process(target=db.book_table, args=(parent_conn3,)))
 procs.append(multiprocessing.Process(target=db.user_table, args=(parent_conn2,)))
+procs.append(multiprocessing.Process(target=ui.show, args=(parent_conn4,)))
 DB = sql.connect("library.db")
 tables = DB.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
 if len(tables) < 1:
@@ -78,6 +91,7 @@ add["data"]["contact_info"] = common.contact_info_template
 add["data"]["contact_info"]["phone_numbers"].append("000-000-0000")
 add["data"]["contact_info"]["emails"].append("test@example.com")
 add["data"]["checked_out_books"] = []
+add["data"]["privs"] = "admin"
 
 user_pipe.send(add)
 print(user_pipe.recv())
@@ -108,8 +122,8 @@ delete["filter"]["compare"] = 1000
 user_pipe.send(get)
 print(json.dumps(user_pipe.recv(), indent=1))
 
-user_pipe.send(delete)
-print(user_pipe.recv())
+# user_pipe.send(delete)
+# print(user_pipe.recv())
 
 
 # DEMO BOOKS DB INTERFACE
@@ -156,15 +170,45 @@ print(book_pipe.recv())
 book_pipe.send(get)
 print(json.dumps(book_pipe.recv(), indent=1))
 
-user_pipe.send(delete)
-print(user_pipe.recv())
+# user_pipe.send(delete)
+# print(user_pipe.recv())
 
-count = 0
 while True:
-    data = bar_pipe.recv()
-    print(json.dumps(data, indent=1))
-    count += 1
-    print(count)
-    time.sleep(1)
-barcoder_proc.join()
+    try:
+        if bar_pipe.poll():
+            data = bar_pipe.recv()
+            print("QR DATA:\n", json.dumps(data, indent=1))
+            if data["type"] in ("user", "users"):
+                data = qr_query(data, user_pipe)
+            elif data["type"] in ("book", "books"):
+                data = qr_query(data, book_pipe)
+            else:
+                data = {"status": 0}
+            print("Return: ", json.dumps(data, indent=1))
+        elif ui_pipe.poll():
+            ui_request = ui_pipe.recv()
+            if ui_request == "shut_down":
+                break
+            if isinstance(ui_request, dict):
+                if ui_request["table"] in ("user", "users"):
+                    user_pipe.send(ui_request["command"])
+                    ui_pipe.send(user_pipe.recv())
+                elif ui_request["table"] in ("book", "books"):
+                    book_pipe.send(ui_request["command"])
+                    ui_pipe.send(book_pipe.recv())
+
+        else:
+            time.sleep(2)
+            continue
+        time.sleep(1)
+    except KeyboardInterrupt:
+        print("Shutting down...")
+        break
+# Shutdown and clean up
 WEBCAM.release()
+for each in procs:
+    each.kill()
+    each.terminate()
+    each.join()
+time.sleep(3)
+os.remove("library.db")
