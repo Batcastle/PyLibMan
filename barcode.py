@@ -51,6 +51,7 @@ def barcode_scanner(pipe, webcam):
         except cv2.error:
             print("Camera disabled. Sleeping...")
             time.sleep(20)
+            continue
         detected_barcodes = get_barcode(data)
         for barcode in detected_barcodes:
             data = barcode.data.decode()
