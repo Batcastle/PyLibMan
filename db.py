@@ -208,7 +208,8 @@ def check_out(book_uid, user_uid, db):
     """Perform checkout of book"""
     # Update checkout status
     check_out_time = time.time()
-    due_date = int(check_out_time + (14 * 24 * 60 * 60))
+    days = common.SETTINGS["default_checkout_days"]
+    due_date = int(check_out_time + (days * 24 * 60 * 60))
     new_status = common.status_template
     new_status["status"] = "checked_out"
     new_status["possession"] = int(user_uid)
