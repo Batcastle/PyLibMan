@@ -110,11 +110,14 @@ class PyLibMan_UI(Gtk.Window):
             # This is a bit of a hack but works
             if "<class 'gi.overrides.Gtk.Label'>" == str(type(each)):
                 element.append(each)
+        print("Elements: ", len(element))
         for each in element:
-            if ((each.get_text() == "----") or ("uid" in each.get_text())):
+            print(each.get_text())
+            if ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured"))):
                 details = each
             if (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text())):
                 status = each
+        self.pipe.send("get_barcode")
         input = self.pipe.recv()
         print(input)
         if "status" in input[0]:
