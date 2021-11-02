@@ -175,27 +175,30 @@ print(json.dumps(book_pipe.recv(), indent=1))
 
 while True:
     try:
-        if bar_pipe.poll():
-            data = bar_pipe.recv()
-            print("QR DATA:\n", json.dumps(data, indent=1))
-            if data["type"] in ("user", "users"):
-                data = qr_query(data, user_pipe)
-            elif data["type"] in ("book", "books"):
-                data = qr_query(data, book_pipe)
-            else:
-                data = {"status": 0}
-            ui_pipe.send(data)
-        elif ui_pipe.poll():
+        if ui_pipe.poll():
             ui_request = ui_pipe.recv()
             if ui_request == "shut_down":
                 break
-            if isinstance(ui_request, dict):
+            elif ui_request == "get_barcode":
+                while True:
+                    bar_pipe.send(True)
+                    data = bar_pipe.recv()
+                    if data["type"] in ("user", "users"):
+                        data = qr_query(data, user_pipe)
+                        break
+                    elif data["type"] in ("book", "books"):
+                        data = qr_query(data, book_pipe)
+                        break
+                    print(data)
+                ui_pipe.send(data)
+            elif isinstance(ui_request, dict):
                 if ui_request["table"] in ("user", "users"):
                     user_pipe.send(ui_request["command"])
                     ui_pipe.send(user_pipe.recv())
                 elif ui_request["table"] in ("book", "books"):
                     book_pipe.send(ui_request["command"])
                     ui_pipe.send(book_pipe.recv())
+
 
         else:
             time.sleep(2)

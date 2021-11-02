@@ -44,27 +44,31 @@ def get_barcode(frame):
 # down on memory usage.
 def barcode_scanner(pipe, webcam):
     """Barcode scanner process"""
+    job = False
     while True:
-        last_sent = None
-        try:
-            data = get_frame(webcam)
-        except cv2.error:
-            print("Camera disabled. Sleeping...")
-            time.sleep(20)
-            continue
-        detected_barcodes = get_barcode(data)
-        for barcode in detected_barcodes:
-            data = barcode.data.decode()
+        while True:
             try:
-                data = json.loads(data)
-            except json.decoder.JSONDecodeError:
+                data = get_frame(webcam)
+            except cv2.error:
+                print("Camera disabled. Sleeping...")
+                time.sleep(20)
                 continue
-            # basic sanitation
-            if isinstance(data, dict):
-                keys = data.keys()
-                if (("type" in keys) and ("uid" in keys)):
-                    output = {"type": data["type"], "uid": data["uid"]}
-                    if output != last_sent:
-                        pipe.send(output)
-                        last_sent = output
-        time.sleep(1)
+            detected_barcodes = get_barcode(data)
+            if detected_barcodes != []:
+                break
+        if pipe.poll():
+            job = pipe.recv()
+            for barcode in detected_barcodes:
+                data = barcode.data.decode()
+                try:
+                    data = json.loads(data)
+                except json.decoder.JSONDecodeError:
+                    continue
+                    # basic sanitation
+                if isinstance(data, dict):
+                    keys = data.keys()
+                    if (("type" in keys) and ("uid" in keys)):
+                        output = {"type": data["type"], "uid": data["uid"]}
+                        if job:
+                            pipe.send(output)
+                            job = False
