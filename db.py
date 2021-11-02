@@ -25,6 +25,7 @@
 import sqlite3 as sql
 import json
 import common
+import time
 
 
 def format_db_output(data, table):
@@ -201,3 +202,38 @@ def book_table(pipe):
                 output = {"status": 0}
         db.commit()
         pipe.send(output)
+
+
+def check_out(book_uid, user_uid, db):
+    """Perform checkout of book"""
+    # Update checkout status
+    check_out_time = time.time()
+    due_date = int(check_out_time + (14 * 24 * 60 * 60))
+    new_status = common.status_template
+    new_status["status"] = "checked_out"
+    new_status["possession"] = int(user_uid)
+    # Round it to the nearest second. May
+    new_status["due_date"] = due_date
+    cmd = common.change_template
+    cmd["settings"]["ch_field"] = "check_in_status"
+    cmd["settings"]["new"] = new_status
+    cmd["settings"]["search_term"] = "uid"
+    cmd["settings"]["search_value"] = book_uid
+    __change_command__(cmd, "books", db)
+
+    # Check out status is now updated.
+    # Update checkout history
+
+    cmd = common.get_template
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = book_uid
+    history = __get_command__(cmd, "books", db)
+    history = data["check_out_history"]
+    new_history = common.check_out_history_template
+    new_history["uid"] = user_uid
+    new_history["checked_out"] = check_out_time
+    new_history["due_date"] = due_date
+    history.insert(0, new_history)
+    cmd["settings"]["ch_field"] = "check_out_history"
+    cmd["settings"]["new"] = history
+    __change_command__(cmd, "books", db)
