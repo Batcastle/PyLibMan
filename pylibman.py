@@ -132,7 +132,7 @@ add = common.add_template
 add["data"] = common.db_struct_books
 add["data"]["uid"] = 1000
 add["data"]["name"] = "Citizenship in the Community"
-add["data"]["check_out_history"] = {}
+add["data"]["check_out_history"] = []
 add["data"]["check_in_status"] = common.status_template
 add["data"]["published"] = 2021
 
