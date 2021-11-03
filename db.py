@@ -26,7 +26,7 @@ import sqlite3 as sql
 import json
 import common
 import time
-
+import traceback
 
 def format_db_output(data, table):
     """Format output from the given table into a reasonable format"""
@@ -178,6 +178,7 @@ def book_table(pipe):
     """Interface to interact with the 'book' table"""
     db = sql.connect("library.db")
     success = {"status": 1}
+    failure = {"status": 0}
     struct = get_struct("book", full=False)
     while True:
         output = None
@@ -199,13 +200,29 @@ def book_table(pipe):
                 db.execute(command)
                 output = success
             except:
-                output = {"status": 0}
+                output = failure
+        elif input["cmd_type"].lower() == "checkout":
+            # Perform checkout
+            try:
+                print(input)
+                output = check_out(input["data"]["book_uid"], input["data"]["user_uid"], db)
+            except Exception as error:
+                output = failure
+                traceback.print_exc()
         db.commit()
         pipe.send(output)
 
 
 def check_out(book_uid, user_uid, db):
     """Perform checkout of book"""
+    # Check to make sure the book is checked in
+    cmd = common.get_template
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = book_uid
+    book = __get_command__(cmd, "books", db)[0]
+    if book["check_in_status"]["status"] != "checked_in":
+        return {"status": 2, "reason": book["check_in_status"]["status"],
+                "user": book["check_in_status"]["possession"]}
     # Update checkout status
     check_out_time = time.time()
     days = common.SETTINGS["default_checkout_days"]
@@ -228,13 +245,18 @@ def check_out(book_uid, user_uid, db):
     cmd = common.get_template
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = book_uid
-    history = __get_command__(cmd, "books", db)
-    history = data["check_out_history"]
+    history = __get_command__(cmd, "books", db)[0]
+    history = history["check_out_history"]
     new_history = common.check_out_history_template
     new_history["uid"] = user_uid
     new_history["checked_out"] = check_out_time
     new_history["due_date"] = due_date
     history.insert(0, new_history)
+    cmd = common.change_template
     cmd["settings"]["ch_field"] = "check_out_history"
     cmd["settings"]["new"] = history
+    cmd["settings"]["search_term"] = "uid"
+    cmd["settings"]["search_value"] = book_uid
     __change_command__(cmd, "books", db)
+
+    return due_date

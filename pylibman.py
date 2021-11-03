@@ -142,34 +142,6 @@ print(book_pipe.recv())
 book_pipe.send(get)
 print(json.dumps(book_pipe.recv(), indent=1))
 
-ch = common.change_template
-ch["settings"]["search_term"] = "uid"
-ch["settings"]["search_value"] = 1000
-ch["settings"]["ch_field"] = "check_out_history"
-ch["settings"]["new"] = {0: common.check_out_history_template}
-ch["settings"]["new"][0]["uid"] = 1000
-ch["settings"]["new"][0]["checked_out"] = time.time()
-due_date = time.time() + 1814400
-ch["settings"]["new"][0]["due_date"] = due_date
-
-book_pipe.send(ch)
-print(book_pipe.recv())
-
-ch = common.change_template
-ch["settings"]["search_term"] = "uid"
-ch["settings"]["search_value"] = 1000
-ch["settings"]["ch_field"] = "check_in_status"
-ch["settings"]["new"] = common.status_template
-ch["settings"]["new"]["status"] = "checked_out"
-ch["settings"]["new"]["possession"] = 1000
-ch["settings"]["new"]["due_date"] = due_date
-
-book_pipe.send(ch)
-print(book_pipe.recv())
-
-book_pipe.send(get)
-print(json.dumps(book_pipe.recv(), indent=1))
-
 # user_pipe.send(delete)
 # print(user_pipe.recv())
 
