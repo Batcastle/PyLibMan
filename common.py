@@ -24,6 +24,7 @@
 """Common Library for PyLibMan"""
 import sys
 import json
+import copy
 
 
 def eprint(*args, **kwargs):
@@ -66,13 +67,16 @@ check_out_history_template = {"uid": 0,
 
 
 # Interface command templates
-get_template = {"cmd_type": "get",
+get_info_template = {"cmd_type": "get",
                 "filter": {"field": None,
                            "compare": None}}
 checkout_template = {"cmd_type": "checkout",
                      "data": {"book_uid": None,
                               "user_uid": None}}
 checkin_template = {"cmd_type": "checkin",
+                     "data": {"book_uid": None,
+                              "user_uid": None}}
+renew_template = {"cmd_type": "renew",
                      "data": {"book_uid": None,
                               "user_uid": None}}
 change_template = {"cmd_type": "ch",
@@ -84,4 +88,33 @@ delete_template = {"cmd_type": "del",
                    "filter": {"field": None,
                               "compare": None}}
 add_template = {"cmd_type": "add",
-                "data": {}} # define this field following the db_struct template for the table in question
+                "data": None} # define this field following the db_struct template for the table in question
+
+
+def get_template(template_name):
+    """Return a seperate instance of whatever template needed"""
+    if template_name == "status":
+        return copy.deepcopy(status_template)
+    if template_name == "change":
+        return copy.deepcopy(change_template)
+    if template_name == "renew":
+        return copy.deepcopy(renew_template)
+    if template_name == "delete":
+        return copy.deepcopy(delete_template)
+    if template_name == "add":
+        return copy.deepcopy(add_template)
+    if template_name in ("checkin", "check_in"):
+        return copy.deepcopy(checkin_template)
+    if template_name in ("check_out", "checkout"):
+        return copy.deepcopy(checkout_template)
+    if template_name == "get":
+        return copy.deepcopy(get_info_template)
+    if template_name == "check_out_history":
+        return copy.deepcopy(check_out_history_template)
+    if template_name == "contact_info_template":
+        return copy.deepcopy(contact_info_template)
+    if template_name == "db_books":
+        return copy.deepcopy(db_struct_books)
+    if template_name == "db_users":
+        return copy.deepcopy(db_struct_users)
+    raise NameError(f"Template for '{template_name}' not found")

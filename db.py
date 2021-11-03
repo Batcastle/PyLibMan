@@ -31,7 +31,7 @@ import traceback
 def format_db_output(data, table):
     """Format output from the given table into a reasonable format"""
     if table in ("user", "users"):
-        output = common.db_struct_users
+        output = common.get_template("db_users")
         output["uid"] = data[0]
         output["name"] = data[1]
         try:
@@ -44,7 +44,7 @@ def format_db_output(data, table):
             output["checked_out_books"] = data[3]
         output["privs"] = data[4]
     elif table in ("book", "books"):
-        output = common.db_struct_books
+        output = common.get_template("db_books")
         output["uid"] = data[0]
         output["name"] = data[1]
         try:
@@ -62,17 +62,17 @@ def format_db_output(data, table):
 def get_struct(db, full=True):
     output = "("
     if db in ("user", "users"):
-        for each in common.db_struct_users:
+        for each in common.get_template("db_users"):
             output = f"{output} {each}"
             if full:
-                output = output + f" {common.db_struct_users[each]}"
+                output = output + f" {common.get_template('db_users')[each]}"
             output = output + ","
         output = output[:-1] + ")"
     elif db in ("book", "books"):
-        for each in common.db_struct_books:
+        for each in common.get_template("db_books"):
             output = f"{output} {each}"
             if full:
-                output = output + f" {common.db_struct_books[each]}"
+                output = output + f" {common.get_template('db_books')[each]}"
             output = output + ","
         output = output[:-1] + ")"
     return output
@@ -148,6 +148,7 @@ def user_table(pipe):
     """Interface to interact with the 'user' table"""
     db = sql.connect("library.db")
     success = {"status": 1}
+    failure = {"status": 0}
     struct = get_struct("user", full=False)
     while True:
         output = None
@@ -169,11 +170,12 @@ def user_table(pipe):
                 db.execute(command)
                 output = success
             except:
-                output = {"status": 0}
+                output = failure
         elif input["cmd_type"].lower() == "checkout":
             # Perform checkout
             try:
-                check_out_user(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                check_out_user(input["data"]["book_uid"],
+                               input["data"]["user_uid"], db)
                 output = success
             except Exception as error:
                 output = failure
@@ -181,11 +183,33 @@ def user_table(pipe):
         elif input["cmd_type"].lower() == "checkin":
             # Perform checkout
             try:
-                check_in_user(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                check_in_user(input["data"]["book_uid"],
+                              input["data"]["user_uid"], db)
                 output = success
             except Exception as error:
                 output = failure
                 traceback.print_exc()
+        elif input["cmd_type"].lower() == "renew":
+            # The easiest way to do this is to check a book in then check
+            # it back out again. This saves code complexity, but at the same
+            # time slows down the system and increases I/O
+            # OPTIMIZE: make seperate "renew" function later that only modifies
+            # what is necessary
+            try:
+                check_in_user(input["data"]["book_uid"],
+                              input["data"]["user_uid"], db)
+                output = success
+            except Exception as error:
+                output = failure
+                traceback.print_exc()
+            if output != failure:
+                try:
+                    check_out_user(input["data"]["book_uid"],
+                                   input["data"]["user_uid"], db)
+                    output = success
+                except Exception as error:
+                    output = failure
+                    traceback.print_exc()
         db.commit()
         pipe.send(output)
 
@@ -220,18 +244,42 @@ def book_table(pipe):
         elif input["cmd_type"].lower() == "checkout":
             # Perform checkout
             try:
-                output = check_out_book(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                output = check_out_book(input["data"]["book_uid"],
+                                        input["data"]["user_uid"], db)
             except Exception as error:
                 output = failure
                 traceback.print_exc()
         elif input["cmd_type"].lower() == "checkin":
-            # Perform checkout
+            # Perform checkin
             try:
-                check_in_book(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                check_in_book(input["data"]["book_uid"],
+                              input["data"]["user_uid"], db)
                 output = success
             except Exception as error:
                 output = failure
                 traceback.print_exc()
+        elif input["cmd_type"].lower() == "renew":
+            # The easiest way to do this is to check a book in then check
+            # it back out again. This saves code complexity, but at the same
+            # time slows down the system and increases I/O
+            # OPTIMIZE: make seperate "renew" function later that only modifies
+            # what is necessary
+            try:
+                check_in_book(input["data"]["book_uid"],
+                              input["data"]["user_uid"], db)
+                output = success
+            except Exception as error:
+                output = failure
+                traceback.print_exc()
+            db.commit()
+            if output != failure:
+                try:
+                    output = check_out_book(input["data"]["book_uid"],
+                                            input["data"]["user_uid"], db)
+                    print(output)
+                except Exception as error:
+                    output = failure
+                    traceback.print_exc()
         db.commit()
         pipe.send(output)
 
@@ -239,7 +287,7 @@ def book_table(pipe):
 def check_out_book(book_uid, user_uid, db):
     """Perform checkout of book"""
     # Check to make sure the book is checked in
-    cmd = common.get_template
+    cmd = common.get_template("get")
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = book_uid
     book = __get_command__(cmd, "books", db)[0]
@@ -250,12 +298,12 @@ def check_out_book(book_uid, user_uid, db):
     check_out_time = time.time()
     days = common.SETTINGS["default_checkout_days"]
     due_date = int(check_out_time + (days * 24 * 60 * 60))
-    new_status = common.status_template
+    new_status = common.get_template("status")
     new_status["status"] = "checked_out"
     new_status["possession"] = int(user_uid)
     # Round it to the nearest second. May
     new_status["due_date"] = due_date
-    cmd = common.change_template
+    cmd = common.get_template("change")
     cmd["settings"]["ch_field"] = "check_in_status"
     cmd["settings"]["new"] = new_status
     cmd["settings"]["search_term"] = "uid"
@@ -265,21 +313,25 @@ def check_out_book(book_uid, user_uid, db):
     # Check out status is now updated.
     # Update checkout history
 
-    cmd = common.get_template
+    cmd = common.get_template("get")
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = book_uid
     history = __get_command__(cmd, "books", db)[0]["check_out_history"]
-    new_history = common.check_out_history_template
+    new_history = common.get_template("check_out_history")
     new_history["uid"] = user_uid
     new_history["checked_out"] = check_out_time
     new_history["due_date"] = due_date
     history.insert(0, new_history)
-    cmd = common.change_template
+    cmd = common.get_template("change")
     cmd["settings"]["ch_field"] = "check_out_history"
     cmd["settings"]["new"] = history
     cmd["settings"]["search_term"] = "uid"
     cmd["settings"]["search_value"] = book_uid
     __change_command__(cmd, "books", db)
+
+    cmd = common.get_template("get")
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = book_uid
 
     return due_date
 
@@ -287,12 +339,12 @@ def check_out_book(book_uid, user_uid, db):
 def check_out_user(book_uid, user_uid, db):
     """Perform checkout of book"""
     # Check to make sure the book is checked in
-    cmd = common.get_template
+    cmd = common.get_template("get")
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = user_uid
     books = __get_command__(cmd, "users", db)[0]["checked_out_books"]
     books.append(book_uid)
-    cmd = common.change_template
+    cmd = common.get_template("change")
     cmd["settings"]["ch_field"] = "checked_out_books"
     cmd["settings"]["new"] = books
     cmd["settings"]["search_term"] = "uid"
@@ -303,12 +355,12 @@ def check_out_user(book_uid, user_uid, db):
 def check_in_user(book_uid, user_uid, db):
     """Perform checkin of book"""
     # Check to make sure the book is checked in
-    cmd = common.get_template
+    cmd = common.get_template('get')
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = user_uid
     books = __get_command__(cmd, "users", db)[0]["checked_out_books"]
     del books[books.index(book_uid)]
-    cmd = common.change_template
+    cmd = common.get_template("change")
     cmd["settings"]["ch_field"] = "checked_out_books"
     cmd["settings"]["new"] = books
     cmd["settings"]["search_term"] = "uid"
@@ -319,32 +371,35 @@ def check_in_user(book_uid, user_uid, db):
 def check_in_book(book_uid, user_uid, db):
     """Perform checkout of book"""
     # Check to make sure the book is checked in
-    cmd = common.get_template
+    cmd = common.get_template("get")
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = book_uid
     book = __get_command__(cmd, "books", db)[0]
     if book["check_in_status"]["status"] not in ("checked_out", "missing"):
         return {"status": 2, "reason": book["check_in_status"]["status"]}
 
-    cmd = common.change_template
+    cmd = common.get_template("change")
     cmd["settings"]["ch_field"] = "check_in_status"
-    cmd["settings"]["new"] = common.status_template
+    cmd["settings"]["new"] = common.get_template("status")
     cmd["settings"]["search_term"] = "uid"
     cmd["settings"]["search_value"] = book_uid
-    __change_command__(cmd, "books", db)
 
     # Check out status is now updated.
     # Update checkout history
 
-    cmd = common.get_template
+    cmd = common.get_template("get")
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = book_uid
     history = __get_command__(cmd, "books", db)[0]
     history = history["check_out_history"]
     history[0]["returned"] = True
-    cmd = common.change_template
+    cmd = common.get_template("change")
     cmd["settings"]["ch_field"] = "check_out_history"
     cmd["settings"]["new"] = history
     cmd["settings"]["search_term"] = "uid"
     cmd["settings"]["search_value"] = book_uid
     __change_command__(cmd, "books", db)
+
+    cmd = common.get_template("get")
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = book_uid

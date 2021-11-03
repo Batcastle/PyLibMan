@@ -37,11 +37,12 @@ class PyLibMan_UI(Gtk.Window):
         self.grid = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
         self.add(self.grid)
         self.set_icon_name("dictionary")
+        self.set_position(Gtk.WindowPosition.CENTER_ALWAYS)
 
         # Make sure the whole class can access the pipe to the main thread
         self.pipe = pipe
         # Make user data available class-wide
-        self.user = common.db_struct_users
+        self.user = common.get_template("db_users")
         # Make our tabs
         self.page0 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
         # Book UID so we can get the data we need
@@ -102,6 +103,23 @@ class PyLibMan_UI(Gtk.Window):
         label.set_justify(Gtk.Justification.CENTER)
         label = self._set_default_margins(label)
         self.page2.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup("""<b>Waiting for Book...</b>""")
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.page2.attach(label1, 1, 2, 5, 1)
+
+        label2 = Gtk.Label()
+        label2.set_markup("""----""")
+        label2.set_justify(Gtk.Justification.CENTER)
+        label2 = self._set_default_margins(label2)
+        self.page2.attach(label2, 1, 3, 5, 1)
+
+        button = Gtk.Button.new_with_label("Start Scanning")
+        button.connect("clicked", self.renew_scanner)
+        button = self._set_default_margins(button)
+        self.page2.attach(button, 1, 4, 1, 1)
 
         self.page3 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
 
@@ -176,7 +194,7 @@ class PyLibMan_UI(Gtk.Window):
 
     def check_out(self, widget):
         """Perform checkout function"""
-        command = {"table": "both", "command": common.checkout_template}
+        command = {"table": "both", "command": common.get_template("check_out")}
         command["command"]["data"]["book_uid"] = self.book_uid
         command["command"]["data"]["user_uid"] = self.user["uid"]
         self.pipe.send(command)
@@ -214,9 +232,88 @@ class PyLibMan_UI(Gtk.Window):
 
     def renew_scanner(self, widget):
         """Renewal book scanner"""
+        self.pipe.send("get_barcode")
+        children = self.page2.get_children()
+        element = []
+        for each in children:
+            # This is a bit of a hack but works
+            if "<class 'gi.overrides.Gtk.Label'>" == str(type(each)):
+                element.append(each)
+        for each in element:
+            if ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured")) or ("due back by" in each.get_text())):
+                details = each
+            elif (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Renewed" in each.get_text())):
+                status = each
+        input = self.pipe.recv()
+        if "status" in input[0]:
+            if input[0]["status"] == 0:
+                details.set_markup("An Error has occured")
+        elif input == []:
+            details.set_markup("Book Not Found")
+            # see if button exists. Delete if so
+            for each in children:
+                if each.get_label() == "Renew Book":
+                    self.page2.remove(each)
+                    break
+        elif "check_in_status" not in input[0]:
+            details.set_markup("Not a Book")
+            # see if button exists. Delete if so
+            for each in children:
+                if each.get_label() == "Renew Book":
+                    self.page2.remove(each)
+                    break
+        else:
+            self.book_uid = input[0]["uid"]
+            text = f"""
+            <b>uid</b>: {input[0]["uid"]}
+           <b>Name</b>: {input[0]["name"]}
+         <b>Status</b>: {input[0]["check_in_status"]["status"]}"""
+            details.set_markup(text)
+            status.set_markup("<b>Book Found</b>")
+            # See if button exists. If not, add button to send checkout command
+            exists = False
+            for each in children:
+                if each.get_label() == "Renew Book":
+                    exists = True
+            if not exists:
+                button = Gtk.Button.new_with_label("Renew Book")
+                button.connect("clicked", self.renew)
+                button = self._set_default_margins(button)
+                self.page2.attach(button, 2, 4, 1, 1)
+
+        self.page2.show_all()
 
     def renew(self, widget):
         """Perform renew function"""
+        command = {"table": "both", "command": common.get_template("renew")}
+        command["command"]["data"]["book_uid"] = self.book_uid
+        command["command"]["data"]["user_uid"] = self.user["uid"]
+        self.pipe.send(command)
+        children = self.page2.get_children()
+        for each in children:
+            if each.get_label() == "Renew Book":
+                button = each
+            try:
+                if (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Renewed" in each.get_text())):
+                    status = each
+                elif ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured")) or ("due back by" in each.get_text()) or ("Already Checked In" in each.get_text())):
+                    details = each
+            except AttributeError:
+                pass
+        response = self.pipe.recv()[1]
+        if isinstance(response, (int, float)):
+            due_date = time.ctime(response)
+            details.set_markup(f"Your book is due back by: {due_date}")
+            status.set_markup("Book Successfully Renewed")
+        elif isinstance(response, dict):
+            if response["status"] == 0:
+                details.set_markup("An Error has occured")
+                status.set_markup("Waiting for Book...")
+            if response["status"] == 2:
+                status.set_markup("Book Found")
+                details.set_markup("Already Checked In")
+        self.page2.remove(button)
+        self.show_all()
 
     def check_in_scanner(self, widget):
         """Check in scanner"""
@@ -230,7 +327,7 @@ class PyLibMan_UI(Gtk.Window):
         for each in element:
             if ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured"))):
                 details = each
-            elif (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Checked In" in each.get_text())):
+            elif (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Checked Back In" in each.get_text())):
                 status = each
         input = self.pipe.recv()
         if "status" in input[0]:
@@ -273,7 +370,7 @@ class PyLibMan_UI(Gtk.Window):
 
     def check_in(self, widget):
         """Perform check in function"""
-        command = {"table": "both", "command": common.checkin_template}
+        command = {"table": "both", "command": common.get_template("check_in")}
         command["command"]["data"]["book_uid"] = self.book_uid
         command["command"]["data"]["user_uid"] = self.user["uid"]
         self.pipe.send(command)
@@ -347,7 +444,7 @@ Exiting now will cause any unsaved data to be lost.""")
 
     def main_menu(self, widget):
         """Main window"""
-        self.user = common.db_struct_users
+        self.user = common.get_template("db_users")
         self.clear_window()
 
         # This is our sign in window. You can't do anything without letting the app know who you are
@@ -389,7 +486,7 @@ Exiting now will cause any unsaved data to be lost.""")
         children = self.grid.get_children()
         uid = children[2].get_text()
         del children
-        command = {"table": "users", "command": common.get_template}
+        command = {"table": "users", "command": common.get_template("get")}
         try:
             uid = int(uid)
         except ValueError:
