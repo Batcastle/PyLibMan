@@ -69,6 +69,9 @@ check_out_history_template = {"uid": 0,
 get_template = {"cmd_type": "get",
                 "filter": {"field": None,
                            "compare": None}}
+checkout_template = {"cmd_type": "checkout",
+                     "data": {"book_uid": None,
+                              "user_uid": None}}
 change_template = {"cmd_type": "ch",
                    "settings": {"ch_field": None,
                                 "new": None,
