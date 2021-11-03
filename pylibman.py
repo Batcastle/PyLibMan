@@ -170,7 +170,10 @@ while True:
                 elif ui_request["table"] in ("book", "books"):
                     book_pipe.send(ui_request["command"])
                     ui_pipe.send(book_pipe.recv())
-
+                elif ui_request["table"] == "both":
+                    user_pipe.send(ui_request["command"])
+                    book_pipe.send(ui_request["command"])
+                    ui_pipe.send((user_pipe.recv(), book_pipe.recv()))
 
         else:
             time.sleep(2)

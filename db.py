@@ -170,6 +170,22 @@ def user_table(pipe):
                 output = success
             except:
                 output = {"status": 0}
+        elif input["cmd_type"].lower() == "checkout":
+            # Perform checkout
+            try:
+                check_out_user(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                output = success
+            except Exception as error:
+                output = failure
+                traceback.print_exc()
+        elif input["cmd_type"].lower() == "checkin":
+            # Perform checkout
+            try:
+                check_in_user(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                output = success
+            except Exception as error:
+                output = failure
+                traceback.print_exc()
         db.commit()
         pipe.send(output)
 
@@ -204,8 +220,15 @@ def book_table(pipe):
         elif input["cmd_type"].lower() == "checkout":
             # Perform checkout
             try:
-                print(input)
-                output = check_out(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                output = check_out_book(input["data"]["book_uid"], input["data"]["user_uid"], db)
+            except Exception as error:
+                output = failure
+                traceback.print_exc()
+        elif input["cmd_type"].lower() == "checkin":
+            # Perform checkout
+            try:
+                check_in_book(input["data"]["book_uid"], input["data"]["user_uid"], db)
+                output = success
             except Exception as error:
                 output = failure
                 traceback.print_exc()
@@ -213,7 +236,7 @@ def book_table(pipe):
         pipe.send(output)
 
 
-def check_out(book_uid, user_uid, db):
+def check_out_book(book_uid, user_uid, db):
     """Perform checkout of book"""
     # Check to make sure the book is checked in
     cmd = common.get_template
@@ -245,8 +268,7 @@ def check_out(book_uid, user_uid, db):
     cmd = common.get_template
     cmd["filter"]["field"] = "uid"
     cmd["filter"]["compare"] = book_uid
-    history = __get_command__(cmd, "books", db)[0]
-    history = history["check_out_history"]
+    history = __get_command__(cmd, "books", db)[0]["check_out_history"]
     new_history = common.check_out_history_template
     new_history["uid"] = user_uid
     new_history["checked_out"] = check_out_time
@@ -260,3 +282,69 @@ def check_out(book_uid, user_uid, db):
     __change_command__(cmd, "books", db)
 
     return due_date
+
+
+def check_out_user(book_uid, user_uid, db):
+    """Perform checkout of book"""
+    # Check to make sure the book is checked in
+    cmd = common.get_template
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = user_uid
+    books = __get_command__(cmd, "users", db)[0]["checked_out_books"]
+    books.append(book_uid)
+    cmd = common.change_template
+    cmd["settings"]["ch_field"] = "checked_out_books"
+    cmd["settings"]["new"] = books
+    cmd["settings"]["search_term"] = "uid"
+    cmd["settings"]["search_value"] = user_uid
+    __change_command__(cmd, "user", db)
+
+
+def check_in_user(book_uid, user_uid, db):
+    """Perform checkin of book"""
+    # Check to make sure the book is checked in
+    cmd = common.get_template
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = user_uid
+    books = __get_command__(cmd, "users", db)[0]["checked_out_books"]
+    del books[books.index(book_uid)]
+    cmd = common.change_template
+    cmd["settings"]["ch_field"] = "checked_out_books"
+    cmd["settings"]["new"] = books
+    cmd["settings"]["search_term"] = "uid"
+    cmd["settings"]["search_value"] = user_uid
+    __change_command__(cmd, "user", db)
+
+
+def check_in_book(book_uid, user_uid, db):
+    """Perform checkout of book"""
+    # Check to make sure the book is checked in
+    cmd = common.get_template
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = book_uid
+    book = __get_command__(cmd, "books", db)[0]
+    if book["check_in_status"]["status"] not in ("checked_out", "missing"):
+        return {"status": 2, "reason": book["check_in_status"]["status"]}
+
+    cmd = common.change_template
+    cmd["settings"]["ch_field"] = "check_in_status"
+    cmd["settings"]["new"] = common.status_template
+    cmd["settings"]["search_term"] = "uid"
+    cmd["settings"]["search_value"] = book_uid
+    __change_command__(cmd, "books", db)
+
+    # Check out status is now updated.
+    # Update checkout history
+
+    cmd = common.get_template
+    cmd["filter"]["field"] = "uid"
+    cmd["filter"]["compare"] = book_uid
+    history = __get_command__(cmd, "books", db)[0]
+    history = history["check_out_history"]
+    history[0]["returned"] = True
+    cmd = common.change_template
+    cmd["settings"]["ch_field"] = "check_out_history"
+    cmd["settings"]["new"] = history
+    cmd["settings"]["search_term"] = "uid"
+    cmd["settings"]["search_value"] = book_uid
+    __change_command__(cmd, "books", db)

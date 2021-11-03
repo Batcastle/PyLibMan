@@ -54,7 +54,7 @@ db_struct_users = {"uid": "INTEGER",
 # JSON templates
 status_template = {"status" : "checked_in", # can be one of: "checked_in", "checked_out", "unavailable", or "missing"
                    "possession": None, # UID of user who has (or should have) book, None if checked in
-                   "duration": 0, # Number of days book has been  in possession of UID in "possession" field
+                   "duration": 0, # Number of days book has been in possession of UID in "possession" field
                    "due_date": 0} # UNIX time book is due to be returned
 contact_info_template = {"phone_numbers": [], # list of phone numbers, stored as text
                          "emails": []}
@@ -70,6 +70,9 @@ get_template = {"cmd_type": "get",
                 "filter": {"field": None,
                            "compare": None}}
 checkout_template = {"cmd_type": "checkout",
+                     "data": {"book_uid": None,
+                              "user_uid": None}}
+checkin_template = {"cmd_type": "checkin",
                      "data": {"book_uid": None,
                               "user_uid": None}}
 change_template = {"cmd_type": "ch",

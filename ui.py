@@ -78,6 +78,23 @@ class PyLibMan_UI(Gtk.Window):
         label = self._set_default_margins(label)
         self.page1.attach(label, 1, 1, 5, 1)
 
+        label1 = Gtk.Label()
+        label1.set_markup("""<b>Waiting for Book...</b>""")
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.page1.attach(label1, 1, 2, 5, 1)
+
+        label2 = Gtk.Label()
+        label2.set_markup("""----""")
+        label2.set_justify(Gtk.Justification.CENTER)
+        label2 = self._set_default_margins(label2)
+        self.page1.attach(label2, 1, 3, 5, 1)
+
+        button = Gtk.Button.new_with_label("Start Scanning")
+        button.connect("clicked", self.check_in_scanner)
+        button = self._set_default_margins(button)
+        self.page1.attach(button, 1, 4, 1, 1)
+
         self.page2 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
 
         label = Gtk.Label()
@@ -159,7 +176,7 @@ class PyLibMan_UI(Gtk.Window):
 
     def check_out(self, widget):
         """Perform checkout function"""
-        command = {"table": "books", "command": common.checkout_template}
+        command = {"table": "both", "command": common.checkout_template}
         command["command"]["data"]["book_uid"] = self.book_uid
         command["command"]["data"]["user_uid"] = self.user["uid"]
         self.pipe.send(command)
@@ -174,7 +191,7 @@ class PyLibMan_UI(Gtk.Window):
                     details = each
             except AttributeError:
                 pass
-        response = self.pipe.recv()
+        response = self.pipe.recv()[1]
         if isinstance(response, (int, float)):
             due_date = time.ctime(response)
             details.set_markup(f"Your book is due back by: {due_date}")
@@ -203,9 +220,86 @@ class PyLibMan_UI(Gtk.Window):
 
     def check_in_scanner(self, widget):
         """Check in scanner"""
+        self.pipe.send("get_barcode")
+        children = self.page1.get_children()
+        element = []
+        for each in children:
+            # This is a bit of a hack but works
+            if "<class 'gi.overrides.Gtk.Label'>" == str(type(each)):
+                element.append(each)
+        for each in element:
+            if ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured"))):
+                details = each
+            elif (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Checked In" in each.get_text())):
+                status = each
+        input = self.pipe.recv()
+        if "status" in input[0]:
+            if input[0]["status"] == 0:
+                details.set_markup("An Error has occured")
+        elif input == []:
+            details.set_markup("Book Not Found")
+            # see if button exists. Delete if so
+            for each in children:
+                if each.get_label() == "Check In Book":
+                    self.page1.remove(each)
+                    break
+        elif "check_in_status" not in input[0]:
+            details.set_markup("Not a Book")
+            # see if button exists. Delete if so
+            for each in children:
+                if each.get_label() == "Check In Book":
+                    self.page1.remove(each)
+                    break
+        else:
+            self.book_uid = input[0]["uid"]
+            text = f"""
+            <b>uid</b>: {input[0]["uid"]}
+           <b>Name</b>: {input[0]["name"]}
+         <b>Status</b>: {input[0]["check_in_status"]["status"]}"""
+            details.set_markup(text)
+            status.set_markup("<b>Book Found</b>")
+            # See if button exists. If not, add button to send checkout command
+            exists = False
+            for each in children:
+                if each.get_label() == "Check In Book":
+                    exists = True
+            if not exists:
+                button = Gtk.Button.new_with_label("Check In Book")
+                button.connect("clicked", self.check_in)
+                button = self._set_default_margins(button)
+                self.page1.attach(button, 2, 4, 1, 1)
+
+        self.page1.show_all()
 
     def check_in(self, widget):
         """Perform check in function"""
+        command = {"table": "both", "command": common.checkin_template}
+        command["command"]["data"]["book_uid"] = self.book_uid
+        command["command"]["data"]["user_uid"] = self.user["uid"]
+        self.pipe.send(command)
+        children = self.page1.get_children()
+        for each in children:
+            if each.get_label() == "Check In Book":
+                button = each
+            try:
+                if (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Checked In" in each.get_text())):
+                    status = each
+                elif ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured")) or ("Already Checked In" in each.get_text())):
+                    details = each
+            except AttributeError:
+                pass
+        response = self.pipe.recv()[1]
+        if response["status"] == 1:
+            details.set_markup("----")
+            status.set_markup("Book Successfully Checked Back In")
+        elif response["status"] == 0:
+            details.set_markup("An Error has occured")
+            status.set_markup("Waiting for Book...")
+        elif response["status"] == 2:
+            status.set_markup("Book Found")
+            details.set_markup("Already Checked In")
+        self.page1.remove(button)
+        self.show_all()
 
     def _set_default_margins(self, widget):
         """Set default margin size"""
