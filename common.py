@@ -69,7 +69,8 @@ check_out_history_template = {"uid": 0,
 # Interface command templates
 get_info_template = {"cmd_type": "get",
                 "filter": {"field": None,
-                           "compare": None}}
+                           "compare": None},
+                "column": "*"} # Get all entries by default
 checkout_template = {"cmd_type": "checkout",
                      "data": {"book_uid": None,
                               "user_uid": None}}

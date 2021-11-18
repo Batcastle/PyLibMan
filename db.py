@@ -83,7 +83,7 @@ def __get_command__(input, db_name, db):
         name = "users"
     elif db_name.lower() in ("book", "books"):
         name = "books"
-    command = f"SELECT * FROM {name}"
+    command = f"SELECT {input['column']} FROM {name}"
     if "filter" in input.keys():
         if input["filter"] != None:
             if None not in (input["filter"]["field"],
@@ -96,9 +96,12 @@ def __get_command__(input, db_name, db):
                 else:
                     command = f"{command}={input['filter']['compare']}"
     unformatted = list(db.execute(command).fetchall())
-    output = []
-    for each in unformatted:
-        output.append(format_db_output(each, name))
+    if input["column"] == "*":
+        output = []
+        for each in unformatted:
+            output.append(format_db_output(each, name))
+    else:
+        output = unformatted[0]
     return output
 
 
