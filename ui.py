@@ -812,35 +812,41 @@ Exiting now will cause any unsaved data to be lost.""")
 
         # Set up to collect all necessary info to add a book to the database
 
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Add A Book</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
         name = Gtk.Entry()
         name.set_placeholder_text("Book Name")
         name = self._set_default_margins(name)
-        self.grid.attach(name, 1, 1, 1, 1)
+        self.grid.attach(name, 1, 2, 1, 1)
 
         uid = Gtk.Entry()
         uid.set_placeholder_text("UID (Unique ID)")
         uid = self._set_default_margins(uid)
-        self.grid.attach(uid, 1, 2, 1, 1)
+        self.grid.attach(uid, 1, 3, 1, 1)
 
         button = Gtk.Button.new_with_label("Generate Random UID")
         button.connect("clicked", self.gen_uid)
         button = self._set_default_margins(button)
-        self.grid.attach(button, 2, 2, 1, 1)
+        self.grid.attach(button, 2, 3, 1, 1)
 
         date = Gtk.Entry()
         date.set_placeholder_text("Publish Year")
         date = self._set_default_margins(date)
-        self.grid.attach(date, 2, 1, 1, 1)
+        self.grid.attach(date, 2, 2, 1, 1)
 
         button1 = Gtk.Button.new_with_label("<--Back")
         button1.connect("clicked", self.reset)
         button1 = self._set_default_margins(button1)
-        self.grid.attach(button1, 1, 3, 1, 1)
+        self.grid.attach(button1, 1, 4, 1, 1)
 
         button2 = Gtk.Button.new_with_label("Add Book")
         button2.connect("clicked", self.add_book)
         button2 = self._set_default_margins(button2)
-        self.grid.attach(button2, 2, 3, 1, 1)
+        self.grid.attach(button2, 2, 4, 1, 1)
 
         self.show_all()
 
