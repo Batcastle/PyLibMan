@@ -219,7 +219,30 @@ class PyLibMan_UI(Gtk.Window):
         # have a UI confirming the user wants to do this
         self.clear_window()
 
-        # put code here
+        label = Gtk.Label()
+        label.set_markup("<span size='x-large'><b>Relinquish Admin Rights</b></span>")
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 2, 1)
+
+        label = Gtk.Label()
+        label.set_markup("""
+        <b>Are you sure you want to relinquish your administrator privileges?</b>
+
+        This action requires help from another administrator to undo.
+        """)
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 2, 2, 1)
+
+        button = Gtk.Button.new_with_label("Cancel")
+        button.connect("clicked", self.reset)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 1, 3, 1, 1)
+
+        button = Gtk.Button.new_with_label("Confirm")
+        button.connect("clicked", self._remove_admin_rights)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 2, 3, 1, 1)
 
         self.show_all()
 
