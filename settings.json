@@ -1,4 +1,4 @@
 {
-	"default_checkout_days": 14
+	"default_checkout_days": 14,
 	"db_name": "library.sql"
 }
