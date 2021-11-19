@@ -229,6 +229,7 @@ class PyLibMan_UI(Gtk.Window):
         # this will just make the change apply to this session
         # logging out and back in would reset this value
         self.user["privs"] = "user"
+        self.reset("clicked")
 
 
     def check_out_scanner(self, widget):
@@ -596,17 +597,12 @@ Exiting now will cause any unsaved data to be lost.""")
         if response == []:
             self.main_menu("invalid")
         self.user = response[0]
-        if response[0]["privs"] == "user":
-            self.user_menu("clicked")
-        elif response[0]["privs"] == "admin":
-            self.admin_menu("clicked")
-        else:
-            self.main_menu("invalid")
+        self.reset("")
 
     def on_logout(self, widget):
         """Logout handler"""
         self.user = None
-        self.reset("clicked")
+        self.reset("")
 
     def user_menu(self, widget):
         """Menu for Users"""
