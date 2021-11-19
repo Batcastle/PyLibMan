@@ -129,5 +129,7 @@ dmypy.json
 .pyre/
 
 
-# application-specific files
-library.db
+# database files
+*.db
+*.sql
+*.sqlite
