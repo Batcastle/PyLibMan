@@ -140,6 +140,14 @@ def __del_command__(input, db_name, db):
         name = "users"
     elif db_name.lower() in ("book", "books"):
         name = "books"
+        # before deleting a book, make sure it is checked in
+        cmd = common.get_template("get")
+        cmd["filter"]["field"] = input['filter']['field']
+        cmd["filter"]["compare"] = input['filter']['compare']
+        book = __get_command__(cmd, name, db)[0]
+        if book["check_in_status"]["status"] != "checked_in":
+            return {"status": 2, "reason": book["check_in_status"]["status"],
+                    "user": book["check_in_status"]["possession"]}
     command = f"DELETE FROM {name} WHERE {input['filter']['field']}="
     command = command + f"{input['filter']['compare']}"
     try:
