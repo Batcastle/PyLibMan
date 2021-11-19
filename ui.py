@@ -1036,13 +1036,100 @@ Exiting now will cause any unsaved data to be lost.""")
 
     def add_user_ui(self, widget):
         """Add a new user to the system: UI function"""
+        self.clear_window()
+
+        self.keys = {"enter": self.add_user,
+                     "esc": self.reset}
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Add A User</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        name = Gtk.Entry()
+        name.set_placeholder_text("First and Last Name")
+        name = self._set_default_margins(name)
+        self.grid.attach(name, 1, 2, 1, 1)
+
+        uid = Gtk.Entry()
+        uid.set_placeholder_text("UID (Unique ID)")
+        uid = self._set_default_margins(uid)
+        self.grid.attach(uid, 2, 2, 1, 1)
+
+        button = Gtk.Button.new_with_label("Generate Random UID")
+        button.connect("clicked", self.gen_uid)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 2, 3, 1, 1)
+
+        phnum = Gtk.Entry()
+        phnum.set_placeholder_text("Phone Number")
+        phnum = self._set_default_margins(phnum)
+        self.grid.attach(phnum, 1, 3, 1, 1)
+
+        email = Gtk.Entry()
+        email.set_placeholder_text("Email")
+        email = self._set_default_margins(email)
+        self.grid.attach(email, 1, 4, 1, 1)
+
+        privs = Gtk.ComboBoxText.new()
+        privs = self._set_default_margins(privs)
+        privs.append("user", "User")
+        privs.append("admin", "Administrator")
+        privs.set_active_id("user")
+        self.grid.attach(privs, 2, 4, 1, 1)
+
+
+        button1 = Gtk.Button.new_with_label("<--Back")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 5, 1, 1)
+
+        button2 = Gtk.Button.new_with_label("Add User")
+        button2.connect("clicked", self.add_user)
+        button2 = self._set_default_margins(button2)
+        self.grid.attach(button2, 2, 5, 1, 1)
+
+        self.show_all()
+
 
     def remove_user_ui(self, widget):
         """remove a user from the system: UI function"""
 
     def add_user(self, widget):
         """Add a new user to the system"""
+        db_struct = common.get_template("db_users")
+        command = common.get_template("add")
+        contact_info = common.get_template("contact_info")
+        children = self.grid.get_children()
+        for each in children:
+            if "<class 'gi.repository.Gtk.Entry'>" == str(type(each)):
+                if each.get_placeholder_text() == "UID (Unique ID)":
+                    db_struct["uid"] = int(each.get_text())
+                elif each.get_placeholder_text() == "First and Last Name":
+                    db_struct["name"] = each.get_text()
+                elif each.get_placeholder_text() ==  "Phone Number":
+                    contact_info["phone_numbers"] = each.get_text().split(",")
+                elif each.get_placeholder_text() ==  "Email":
+                    contact_info["emails"] = each.get_text().split(",")
+            elif "<class 'gi.repository.Gtk.ComboBoxText'>" == str(type(each)):
+                db_struct["privs"] = each.get_active_id()
+        db_struct["contact_info"] = contact_info
+        db_struct["checked_out_books"] = []
+        command["data"] = db_struct
+        command = {"table": "user", "command": command}
+        self.pipe.send(command)
+        output = self.pipe.recv()
+        if output["status"] == 1:
+            self.add_user_success(db_struct["name"], db_struct["uid"],
+                                  db_struct["privs"])
+        else:
+            self.error()
 
+    def add_user_success(self, name, uid, privs):
+        """Tell administrator a new user has been successfully added"""
+    def add_book_success(self, name, uid):
+        """Tell administrator a new book has been successfully added"""
     def remove_user(self, widget):
         """Remove a user from the system"""
 
