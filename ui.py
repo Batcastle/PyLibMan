@@ -178,12 +178,12 @@ class PyLibMan_UI(Gtk.Window):
         # button = Gtk.Button.new_with_label("Edit Book Info")
         # button.connect("clicked", self.edit_book_ui)
         # button = self._set_default_margins(button)
-        # self.page4.attach(button, 1, 3, 2, 1)
+        # self.page4.attach(button, 1, 3, 1, 1)
 
         button = Gtk.Button.new_with_label("Relinquish Admin Rights")
         button.connect("clicked", self.remove_admin_rights)
         button = self._set_default_margins(button)
-        self.page4.attach(button, 2, 3, 2, 1)
+        self.page3.attach(button, 2, 3, 1, 1)
 
         label = Gtk.Label()
         label.set_markup("""<span size="x-large"><b>Book Administration</b></span>""")
@@ -201,10 +201,15 @@ class PyLibMan_UI(Gtk.Window):
         button = self._set_default_margins(button)
         self.page4.attach(button, 2, 2, 1, 1)
 
+        button = Gtk.Button.new_with_label("View Books")
+        button.connect("clicked", self.view_titles_ui)
+        button = self._set_default_margins(button)
+        self.page4.attach(button, 2, 3, 1, 1)
+
         # button = Gtk.Button.new_with_label("Edit Book Info")
         # button.connect("clicked", self.edit_book_ui)
         # button = self._set_default_margins(button)
-        # self.page4.attach(button, 1, 3, 2, 1)
+        # self.page4.attach(button, 1, 3, 1, 1)
 
         if self.user is None:
             self.main_menu("clicked")
@@ -213,6 +218,101 @@ class PyLibMan_UI(Gtk.Window):
                 self.admin_menu("clicked")
             else:
                 self.user_menu("clicked")
+
+    def view_titles_ui(self, widget):
+        """View Book Titles, or order to quickly find a specific book"""
+        self.clear_window()
+
+        self.keys = {"enter": self.view_books_ui,
+                     "esc": self.reset}
+
+        cmd = common.get_template("get")
+        cmd["column"] = "name"
+        del cmd["filter"]
+        cmd = {"table": "book", "command": cmd}
+        self.pipe.send(cmd)
+
+        # While those threads are working, we can get our UI made
+        label = Gtk.Label()
+        label.set_markup("<span size='x-large'><b>View Books</b></span>")
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 2, 1)
+
+        label = Gtk.Label()
+        label.set_markup("""
+        <b>Pick a title to view info on</b>
+        """)
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 2, 2, 1)
+
+        titles = Gtk.ComboBoxText.new()
+        titles = self._set_default_margins(titles)
+        # hold off on finishing setting up this widget till the end to give the DB time to work
+
+        button = Gtk.Button.new_with_label("<-- Back")
+        button.connect("clicked", self.reset)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 1, 4, 1, 1)
+
+        button = Gtk.Button.new_with_label("View Book")
+        button.connect("clicked", self.view_books_ui)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 2, 4, 1, 1)
+
+        # NOW get our data out of the pipe
+        data = self.pipe.recv()
+        # make sure the data is a sorted list of unique entries
+        if isinstance(data, tuple):
+            data = list(data)
+        data = common.unique(data)
+        data.sort()
+
+        # add them to the drop down box
+        for each in data:
+            titles.append(each, each)
+        titles.connect("changed", self.select_title)
+        self.grid.attach(titles, 1, 3, 2, 1)
+
+        self.show_all()
+
+    def select_title(self, widget):
+        """Grab book title to view"""
+        self.book_uid = widget.get_active_id()
+
+    def view_books_ui(self, widget):
+        """View all books with a specific title"""
+        self.clear_window()
+
+        self.keys = {"enter": self.view_titles_ui,
+                     "esc": self.view_titles_ui}
+
+        cmd = common.get_template("get")
+        cmd["filter"]["field"] = "name"
+        cmd["filter"]["compare"] = self.book_uid
+        cmd = {"table": "book", "command": cmd}
+        self.pipe.send(cmd)
+
+        label = Gtk.Label()
+        label.set_markup(f"<span size='x-large'><b>{self.book_uid}</b></span>")
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 2, 1)
+
+
+        data = self.pipe.recv()
+        for each in enumerate(data):
+            label = Gtk.Label()
+            label = self._set_default_margins(label)
+            label.set_markup(f"<b>UID</b>: {data[each[0]]['uid']} - <b>Published</b>: {data[each[0]]['published']} - <b>Status</b>: {data[each[0]]['check_in_status']['status'].replace('_', ' ')}")
+            self.grid.attach(label, 1, 2 + each[0], 2, 1)
+
+        button = Gtk.Button.new_with_label("<-- Back")
+        button.connect("clicked", self.view_titles_ui)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 1, 3 + len(data), 1, 1)
+
+        self.book_uid = None
+        self.show_all()
 
     def remove_admin_rights(self, widget):
         """Remove admin rights"""

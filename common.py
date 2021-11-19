@@ -32,7 +32,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-VERSION = "0.0.0-alpha0"
+VERSION = "0.0.1-alpha0"
 HELP = f"""PyLibMan, Version {VERSION}
 
 The rest of this will be assigned later."""
@@ -119,3 +119,15 @@ def get_template(template_name):
     if template_name == "db_users":
         return copy.deepcopy(db_struct_users)
     raise NameError(f"Template for '{template_name}' not found")
+
+
+def unique(starting_list):
+    """Function to get a list down to only unique elements"""
+    # intilize a null list
+    unique_list = []
+    # traverse for all elements
+    for each in starting_list:
+        # check if exists in unique_list or not
+        if each not in unique_list:
+            unique_list.append(each)
+    return unique_list
