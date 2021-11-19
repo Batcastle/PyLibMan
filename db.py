@@ -28,6 +28,9 @@ import common
 import time
 import traceback
 
+success = {"status": 1}
+failure = {"status": 0}
+
 def format_db_output(data, table):
     """Format output from the given table into a reasonable format"""
     if table in ("user", "users"):
@@ -128,7 +131,7 @@ def __change_command__(input, db_name, db):
         db.execute(command)
         output = success
     except:
-        output = {"status": 0}
+        output = failure
     return output
 
 
@@ -143,15 +146,13 @@ def __del_command__(input, db_name, db):
         db.execute(command)
         output = success
     except:
-        output = {"status": 0}
+        output = failure
     return output
 
 
 def user_table(pipe):
     """Interface to interact with the 'user' table"""
     db = sql.connect("library.db")
-    success = {"status": 1}
-    failure = {"status": 0}
     struct = get_struct("user", full=False)
     while True:
         output = None
@@ -220,8 +221,6 @@ def user_table(pipe):
 def book_table(pipe):
     """Interface to interact with the 'book' table"""
     db = sql.connect("library.db")
-    success = {"status": 1}
-    failure = {"status": 0}
     struct = get_struct("book", full=False)
     while True:
         output = None
