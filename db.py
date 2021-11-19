@@ -160,7 +160,7 @@ def __del_command__(input, db_name, db):
 
 def user_table(pipe):
     """Interface to interact with the 'user' table"""
-    db = sql.connect("library.db")
+    db = sql.connect(common.SETTINGS["db_name"])
     struct = get_struct("user", full=False)
     while True:
         output = None
@@ -228,7 +228,7 @@ def user_table(pipe):
 
 def book_table(pipe):
     """Interface to interact with the 'book' table"""
-    db = sql.connect("library.db")
+    db = sql.connect(common.SETTINGS["db_name"])
     struct = get_struct("book", full=False)
     while True:
         output = None

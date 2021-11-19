@@ -67,7 +67,7 @@ procs.append(multiprocessing.Process(target=barcode.barcode_scanner,
 procs.append(multiprocessing.Process(target=db.book_table, args=(parent_conn3,)))
 procs.append(multiprocessing.Process(target=db.user_table, args=(parent_conn2,)))
 procs.append(multiprocessing.Process(target=ui.show, args=(parent_conn4,)))
-DB = sql.connect("library.db")
+DB = sql.connect(common.SETTINGS["db_name"])
 tables = DB.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
 if len(tables) < 1:
     print("Tables do not exist. Generating...")
