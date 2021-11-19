@@ -24,9 +24,10 @@
 """UI for PyLibMan"""
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk
 import common
 import time
+import random
 
 
 class PyLibMan_UI(Gtk.Window):
@@ -42,11 +43,50 @@ class PyLibMan_UI(Gtk.Window):
         # Make sure the whole class can access the pipe to the main thread
         self.pipe = pipe
         # Make user data available class-wide
-        self.user = common.get_template("db_users")
+        self.user = None
         # Make our tabs
         self.page0 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
+        self.page1 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
+        self.page2 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
+        self.page3 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
+        self.page4 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
         # Book UID so we can get the data we need
         self.book_uid = None
+
+        # enable window to receive key press events
+        self.connect("key-press-event", self.on_key_press_event)
+
+        self.reset("")
+
+    def on_key_press_event(self, widget, event):
+        """Handles keyy press events for window"""
+        if event.keyval == Gdk.KEY_Escape:
+            self.keys["esc"]("clicked")
+        elif event.keyval == Gdk.KEY_Return:
+            self.keys["enter"]("clicked")
+
+
+    def reset(self, widget):
+        """make/remake tabs"""
+        children = self.page0.get_children()
+        for each0 in children:
+            self.page0.remove(each0)
+
+        children = self.page1.get_children()
+        for each0 in children:
+            self.page1.remove(each0)
+
+        children = self.page2.get_children()
+        for each0 in children:
+            self.page2.remove(each0)
+
+        children = self.page3.get_children()
+        for each0 in children:
+            self.page3.remove(each0)
+
+        children = self.page4.get_children()
+        for each0 in children:
+            self.page4.remove(each0)
 
         label = Gtk.Label()
         label.set_markup("""<span size="x-large"><b>Check Out</b></span>""")
@@ -71,8 +111,6 @@ class PyLibMan_UI(Gtk.Window):
         button = self._set_default_margins(button)
         self.page0.attach(button, 1, 4, 1, 1)
 
-        self.page1 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
-
         label = Gtk.Label()
         label.set_markup("""<span size="x-large"><b>Check In</b></span>""")
         label.set_justify(Gtk.Justification.CENTER)
@@ -95,8 +133,6 @@ class PyLibMan_UI(Gtk.Window):
         button.connect("clicked", self.check_in_scanner)
         button = self._set_default_margins(button)
         self.page1.attach(button, 1, 4, 1, 1)
-
-        self.page2 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
 
         label = Gtk.Label()
         label.set_markup("""<span size="x-large"><b>Renew</b></span>""")
@@ -121,15 +157,33 @@ class PyLibMan_UI(Gtk.Window):
         button = self._set_default_margins(button)
         self.page2.attach(button, 1, 4, 1, 1)
 
-        self.page3 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
-
         label = Gtk.Label()
         label.set_markup("""<span size="x-large"><b>User Administration</b></span>""")
         label.set_justify(Gtk.Justification.CENTER)
         label = self._set_default_margins(label)
         self.page3.attach(label, 1, 1, 5, 1)
 
-        self.page4 = Gtk.Grid(orientation=Gtk.Orientation.VERTICAL)
+        button = Gtk.Button.new_with_label("Add User")
+        button.connect("clicked", self.add_user_ui)
+        button = self._set_default_margins(button)
+        self.page3.attach(button, 1, 2, 1, 1)
+
+        button = Gtk.Button.new_with_label("Remove User")
+        button.connect("clicked", self.remove_user_ui)
+        button = self._set_default_margins(button)
+        self.page3.attach(button, 2, 2, 1, 1)
+
+        # Also need Edit User and Relinquish Admin Privs
+
+        # button = Gtk.Button.new_with_label("Edit Book Info")
+        # button.connect("clicked", self.edit_book_ui)
+        # button = self._set_default_margins(button)
+        # self.page4.attach(button, 1, 3, 2, 1)
+
+        button = Gtk.Button.new_with_label("Relinquish Admin Rights")
+        button.connect("clicked", self.remove_admin_rights)
+        button = self._set_default_margins(button)
+        self.page4.attach(button, 2, 3, 2, 1)
 
         label = Gtk.Label()
         label.set_markup("""<span size="x-large"><b>Book Administration</b></span>""")
@@ -137,7 +191,45 @@ class PyLibMan_UI(Gtk.Window):
         label = self._set_default_margins(label)
         self.page4.attach(label, 1, 1, 5, 1)
 
-        self.main_menu("clicked")
+        button = Gtk.Button.new_with_label("Add Book")
+        button.connect("clicked", self.add_book_ui)
+        button = self._set_default_margins(button)
+        self.page4.attach(button, 1, 2, 1, 1)
+
+        button = Gtk.Button.new_with_label("Remove Book")
+        button.connect("clicked", self.remove_book_ui)
+        button = self._set_default_margins(button)
+        self.page4.attach(button, 2, 2, 1, 1)
+
+        # button = Gtk.Button.new_with_label("Edit Book Info")
+        # button.connect("clicked", self.edit_book_ui)
+        # button = self._set_default_margins(button)
+        # self.page4.attach(button, 1, 3, 2, 1)
+
+        if self.user is None:
+            self.main_menu("clicked")
+        else:
+            if self.user["privs"] == "admin":
+                self.admin_menu("clicked")
+            else:
+                self.user_menu("clicked")
+
+    def remove_admin_rights(self, widget):
+        """Remove admin rights"""
+        # have a UI confirming the user wants to do this
+        self.clear_window()
+
+        # put code here
+
+        self.show_all()
+
+    def _remove_admin_rights(self, widget):
+        """Remove admin rights"""
+        # the change needs to be made to the DB too, to be persistant
+        # this will just make the change apply to this session
+        # logging out and back in would reset this value
+        self.user["privs"] = "user"
+
 
     def check_out_scanner(self, widget):
         """Check out scanner"""
@@ -154,16 +246,16 @@ class PyLibMan_UI(Gtk.Window):
             elif (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Checked Out" in each.get_text())):
                 status = each
         input = self.pipe.recv()
-        if "status" in input[0]:
-            if input[0]["status"] == 0:
-                details.set_markup("An Error has occured")
-        elif input == []:
+        if input == []:
             details.set_markup("Book Not Found")
             # see if button exists. Delete if so
             for each in children:
                 if each.get_label() == "Check Out Book":
                     self.page0.remove(each)
                     break
+        elif "status" in input[0]:
+            if input[0]["status"] == 0:
+                details.set_markup("An Error has occured")
         elif "check_in_status" not in input[0]:
             details.set_markup("Not a Book")
             # see if button exists. Delete if so
@@ -416,6 +508,9 @@ class PyLibMan_UI(Gtk.Window):
         """Exit dialog"""
         self.clear_window()
 
+        self.keys = {"enter": self._exit,
+                     "esc": self._exit}
+
         label = Gtk.Label()
         label.set_markup("""\n<b>Are you sure you want to exit?</b>
 
@@ -446,6 +541,9 @@ Exiting now will cause any unsaved data to be lost.""")
         """Main window"""
         self.user = common.get_template("db_users")
         self.clear_window()
+
+        self.keys = {"enter": self.on_login,
+                     "esc": self.exit}
 
         # This is our sign in window. You can't do anything without letting the app know who you are
 
@@ -505,24 +603,33 @@ Exiting now will cause any unsaved data to be lost.""")
         else:
             self.main_menu("invalid")
 
+    def on_logout(self, widget):
+        """Logout handler"""
+        self.user = None
+        self.reset("clicked")
+
     def user_menu(self, widget):
         """Menu for Users"""
         self.clear_window()
 
+        self.keys = {"enter": None,
+                     "esc": self.on_logout}
+
         stack = Gtk.Stack()
-        stack.add_titled(self.page0, "page0", "Check Out")
-        stack.add_titled(self.page1, "page1", "Check In")
-        stack.add_titled(self.page2, "page2", "Renew")
+        stack.add_titled(self.page0, "Check Out", "Check Out")
+        stack.add_titled(self.page1, "Check In", "Check In")
+        stack.add_titled(self.page2, "Renew", "Renew")
         stack = self._set_default_margins(stack)
         self.grid.attach(stack, 1, 2, 4, 1)
 
         stack_switcher = Gtk.StackSwitcher()
         stack_switcher.set_stack(stack)
         stack_switcher = self._set_default_margins(stack_switcher)
+        stack_switcher.connect("event", self.keyboard_changer)
         self.grid.attach(stack_switcher, 2, 1, 2, 1)
 
         button1 = Gtk.Button.new_with_label("Log Out")
-        button1.connect("clicked", self.main_menu)
+        button1.connect("clicked", self.on_logout)
         button1 = self._set_default_margins(button1)
         self.grid.attach(button1, 3, 4, 1, 1)
 
@@ -532,27 +639,299 @@ Exiting now will cause any unsaved data to be lost.""")
         """Menu for Admin"""
         self.clear_window()
 
-        self.clear_window()
+        self.keys = {"enter": None,
+                     "esc": self.on_logout}
+
         stack = Gtk.Stack()
-        stack.add_titled(self.page0, "page0", "Check Out")
-        stack.add_titled(self.page1, "page1", "Check In")
-        stack.add_titled(self.page2, "page2", "Renew")
-        stack.add_titled(self.page3, "page3", "User Admin")
-        stack.add_titled(self.page4, "page4", "Book Admin")
+        stack.add_titled(self.page0, "Check Out", "Check Out")
+        stack.add_titled(self.page1, "Check In", "Check In")
+        stack.add_titled(self.page2, "Renew", "Renew")
+        stack.add_titled(self.page3, "User Admin", "User Admin")
+        stack.add_titled(self.page4, "Book Admin", "Book Admin")
         stack = self._set_default_margins(stack)
         self.grid.attach(stack, 1, 2, 4, 1)
 
         stack_switcher = Gtk.StackSwitcher()
         stack_switcher.set_stack(stack)
         stack_switcher = self._set_default_margins(stack_switcher)
+        stack_switcher.connect("event", self.keyboard_changer)
         self.grid.attach(stack_switcher, 2, 1, 2, 1)
 
         button1 = Gtk.Button.new_with_label("Log Out")
-        button1.connect("clicked", self.main_menu)
+        button1.connect("clicked", self.on_logout)
         button1 = self._set_default_margins(button1)
         self.grid.attach(button1, 3, 4, 1, 1)
 
         self.show_all()
+
+    def keyboard_changer(self, widget, other_widget):
+        """Change keyboard keys depending on what is on screen"""
+        children = self.grid.get_children()
+        for each in children:
+            if str(type(each)) == "<class 'gi.repository.Gtk.Stack'>":
+                visible = each.get_visible_child_name()
+                break
+        if visible == "Check Out":
+            self.keys = {"enter": self.check_in_scanner,
+                         "esc": self.on_logout}
+        elif visible == "Check Out":
+            self.keys = {"enter": self.check_out_scanner,
+                         "esc": self.on_logout}
+        elif visible == "Renew":
+            self.keys = {"enter": self.renew_scanner,
+                         "esc": self.on_logout}
+        elif visible == "User Admin":
+            self.keys = {"enter": None,
+                         "esc": self.on_logout}
+        elif visible == "Book Admin":
+            self.keys = {"enter": None,
+                         "esc": self.on_logout}
+
+    def add_book_ui(self, widget):
+        """UI to add a book"""
+        self.clear_window()
+
+        # Set up to collect all necessary info to add a book to the database
+
+        name = Gtk.Entry()
+        name.set_placeholder_text("Book Name")
+        name = self._set_default_margins(name)
+        self.grid.attach(name, 1, 1, 1, 1)
+
+        uid = Gtk.Entry()
+        uid.set_placeholder_text("UID (Unique ID)")
+        uid = self._set_default_margins(uid)
+        self.grid.attach(uid, 1, 2, 1, 1)
+
+        button = Gtk.Button.new_with_label("Generate Random UID")
+        button.connect("clicked", self.gen_uid)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 2, 2, 1, 1)
+
+        date = Gtk.Entry()
+        date.set_placeholder_text("Publish Year")
+        date = self._set_default_margins(date)
+        self.grid.attach(date, 2, 1, 1, 1)
+
+        button1 = Gtk.Button.new_with_label("<--Back")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 3, 1, 1)
+
+        button2 = Gtk.Button.new_with_label("Add Book")
+        button2.connect("clicked", self.add_book)
+        button2 = self._set_default_margins(button2)
+        self.grid.attach(button2, 2, 3, 1, 1)
+
+        self.show_all()
+
+    def add_book(self, widget):
+        """Add book to DB"""
+        db_struct = common.get_template("db_books")
+        command = common.get_template("add")
+        children = self.grid.get_children()
+        for each in children:
+            if "<class 'gi.repository.Gtk.Entry'>" == str(type(each)):
+                if each.get_placeholder_text() == "UID (Unique ID)":
+                    db_struct["uid"] = int(each.get_text())
+                elif each.get_placeholder_text() == "Book Name":
+                    db_struct["name"] = each.get_text()
+                elif each.get_placeholder_text() ==  "Publish Year":
+                    db_struct["published"] = int(each.get_text())
+
+        # we have retreived data from the UI. Generate remaining data
+        db_struct["check_in_status"] = {"status": "checked_in",
+                                        "possession": None,
+                                        "duration": 0,
+                                        "due_date": 0}
+        db_struct["check_out_history"] = []
+
+        # Generate command
+        command["data"] = db_struct
+        command = {"table": "book", "command": command}
+        self.pipe.send(command)
+        output = self.pipe.recv()
+        if output["status"] == 1:
+            self.reset("")
+        else:
+            self.error()
+
+    def error(self):
+        """Error Dialog"""
+        self.clear_window()
+
+    def gen_uid(self, widget):
+        """Generate random UID"""
+        children = self.grid.get_children()
+        for each in children:
+            if "<class 'gi.repository.Gtk.Entry'>" == str(type(each)):
+                if each.get_placeholder_text() == "UID (Unique ID)":
+                    placement = each
+                    break
+        cmd = common.get_template("get")
+        cmd["column"] = "uid"
+        del cmd["filter"]
+        cmd = {"table": "book", "command": cmd}
+        self.pipe.send(cmd)
+        data = self.pipe.recv()
+        print("Generating UID...")
+        while True:
+            uid = random.randint(1000, 999999)
+            print("Selecting UID: ", uid)
+            if uid not in data:
+                break
+            print("UID already taken. Retrying")
+        placement.set_text(str(uid))
+        self.show_all()
+
+    def remove_book_ui(self, widget):
+        """UI to remove a book"""
+        self.clear_window()
+
+        # Make a scanner window basicly
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Remove Book</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup("""<b>Waiting for Book...</b>""")
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        label2 = Gtk.Label()
+        label2.set_markup("""----""")
+        label2.set_justify(Gtk.Justification.CENTER)
+        label2 = self._set_default_margins(label2)
+        self.grid.attach(label2, 1, 3, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("<-- Back")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        button = Gtk.Button.new_with_label("Start Scanning")
+        button.connect("clicked", self.remove_book_scanner)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 2, 4, 1, 1)
+
+        self.show_all()
+
+    def remove_book_scanner(self, widget):
+        """Check out scanner"""
+        self.pipe.send("get_barcode")
+        children = self.grid.get_children()
+        element = []
+        for each in children:
+            # This is a bit of a hack but works
+            if "<class 'gi.overrides.Gtk.Label'>" == str(type(each)):
+                element.append(each)
+        for each in element:
+            if ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured")) or ("Removed" in each.get_text())):
+                details = each
+            elif (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Removed" in each.get_text())):
+                status = each
+        input = self.pipe.recv()
+        if "status" in input[0]:
+            if input[0]["status"] == 0:
+                details.set_markup("An Error has occured")
+        elif input == []:
+            details.set_markup("Book Not Found")
+            # see if button exists. Delete if so
+            for each in children:
+                if each.get_label() == "Remove Book":
+                    self.page0.remove(each)
+                    break
+        elif "check_in_status" not in input[0]:
+            details.set_markup("Not a Book")
+            # see if button exists. Delete if so
+            for each in children:
+                if each.get_label() == "Remove Book":
+                    self.page0.remove(each)
+                    break
+        else:
+            self.book_uid = input[0]["uid"]
+            text = f"""
+            <b>uid</b>: {input[0]["uid"]}
+           <b>Name</b>: {input[0]["name"]}
+      <b>Published</b>: {input[0]["published"]}"""
+            details.set_markup(text)
+            status.set_markup("<b>Book Found</b>")
+            # See if button exists. If not, add button to send checkout command
+            exists = False
+            for each in children:
+                if each.get_label() == "Remove Book":
+                    exists = True
+            if not exists:
+                button = Gtk.Button.new_with_label("Remove Book")
+                button.connect("clicked", self.remove_book)
+                button = self._set_default_margins(button)
+                self.grid.attach(button, 3, 4, 1, 1)
+
+        self.grid.show_all()
+
+    def remove_book(self, widget):
+        """Perform checkout function"""
+        command = {"table": "book", "command": common.get_template("delete")}
+        command["command"]["filter"]["compare"] = self.book_uid
+        command["command"]["filter"]["field"] = "uid"
+        self.pipe.send(command)
+        children = self.grid.get_children()
+        for each in children:
+            if each.get_label() == "Remove Book":
+                button = each
+            try:
+                if (("Waiting for Book..." in each.get_text()) or ("Book Found" in each.get_text()) or ("Removed" in each.get_text())):
+                    status = each
+                elif ((each.get_text() == "----") or ("uid" in each.get_text()) or (each.get_text() in ("Book Not Found", "Not a Book", "An Error has occured")) or ("Removed" in each.get_text()) or ("Currently Checked Out" in each.get_text())):
+                    details = each
+            except AttributeError:
+                pass
+        response = self.pipe.recv()
+        print(response)
+        if response["status"] == 0:
+            details.set_markup("An Error has occured")
+            status.set_markup("Waiting for Book...")
+        elif response["status"] == 1:
+            details.set_markup("The book has been removed")
+            status.set_markup("Book Successfully Removed")
+        elif response["status"] == 2:
+            status.set_markup("Book Found")
+            message = "Currently Checked Out to "
+            if response["user"] == self.user["uid"]:
+                message = message + "You"
+            else:
+                message = message + "Someone Else"
+            details.set_markup(message)
+        self.grid.remove(button)
+        self.show_all()
+
+    def edit_book_ui(self, widget):
+        """UI to edit certain book info.
+
+        Cannot edit: UID, History
+        """
+
+    def add_user_ui(self, widget):
+        """Add a new user to the system: UI function"""
+
+    def remove_user_ui(self, widget):
+        """remove a user from the system: UI function"""
+
+    def add_user(self, widget):
+        """Add a new user to the system"""
+
+    def remove_user(self, widget):
+        """Remove a user from the system"""
+
+    def edit_user_ui(self, widget):
+        """Edit user info: UI function"""
+
+    def edit_user(self, widget):
+        """Edit user info"""
 
 def show(pipe):
     """Show Main UI"""
