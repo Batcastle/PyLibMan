@@ -74,29 +74,28 @@ if len(tables) < 1:
     DB.execute(f"CREATE TABLE users {db.get_struct('user')}")
     DB.execute(f"CREATE TABLE books {db.get_struct('book')}")
     DB.commit()
+    DB.close()
+    for each in procs:
+        each.start()
+    # give a second for everything to get going
+    sleep(0.1)
+    print("Adding temporary administrator account")
+    add = common.get_template("add")
+    add["data"] = common.get_template("db_users")
+    add["data"]["uid"] = 1000
+    add["data"]["name"] = "TestUser Test TestUserMan"
+    add["data"]["contact_info"] = common.get_template("contact_info_template")
+    add["data"]["contact_info"]["phone_numbers"].append("000-000-0000")
+    add["data"]["contact_info"]["emails"].append("test@example.com")
+    add["data"]["checked_out_books"] = []
+    add["data"]["privs"] = "admin"
+    user_pipe.send(add)
 else:
     print("Tables exist!")
-DB.close()
 
-for each in procs:
-    each.start()
-
-# DEMO USER DB INTERFACE
-print("USER DB INTERFACE DEMO")
-add = common.get_template("add")
-add["data"] = common.get_template("db_users")
-add["data"]["uid"] = 1000
-add["data"]["name"] = "TestUser Test TestUserMan"
-add["data"]["contact_info"] = common.get_template("contact_info_template")
-add["data"]["contact_info"]["phone_numbers"].append("000-000-0000")
-add["data"]["contact_info"]["emails"].append("test@example.com")
-add["data"]["checked_out_books"] = []
-add["data"]["privs"] = "admin"
-
-print(add)
-
-user_pipe.send(add)
-print(user_pipe.recv())
+if len(tables) >= 1:
+    for each in procs:
+        each.start()
 
 
 while True:
