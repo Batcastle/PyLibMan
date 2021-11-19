@@ -99,12 +99,38 @@ def __get_command__(input, db_name, db):
                 else:
                     command = f"{command}={input['filter']['compare']}"
     unformatted = list(db.execute(command).fetchall())
+    output = []
     if input["column"] == "*":
-        output = []
         for each in unformatted:
             output.append(format_db_output(each, name))
     else:
-        output = unformatted[0]
+        if unformatted != []:
+            # we know unformatted is a list with a non-zero length. We can iterate
+            for each in range(len(unformatted) - 1, -1, -1):
+                if isinstance(unformatted[each], tuple):
+                    if len(unformatted[each]) == 0:
+                        continue
+                    elif len(unformatted[each]) == 1:
+                        output.append(unformatted[each][0])
+                    else:
+                        # we know unformatted[each] is longer than 1, it needs to be handled by something else
+                        # in order to facilitate that, convert the tuple into a list
+                        output.append(list(unformatted[each]))
+                elif isinstance(unformatted[each], list):
+                    if len(unformatted[each]) == 0:
+                        continue
+                    elif len(unformatted[each]) == 1:
+                        output.append(unformatted[each][0])
+                    else:
+                        # we know unformatted[each] is longer than 1, it needs to be handled by something else
+                        output.append(unformatted[each])
+                else:
+                    # anything else just pass it through
+                    output.append(unformatted[each])
+            # the output got reversed when iterating. Turn it back
+            output.reverse()
+        else:
+            output = unformatted
     return output
 
 
