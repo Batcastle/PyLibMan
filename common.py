@@ -112,11 +112,11 @@ def get_template(template_name):
         return copy.deepcopy(get_info_template)
     if template_name == "check_out_history":
         return copy.deepcopy(check_out_history_template)
-    if template_name == "contact_info_template":
+    if template_name in ("contact_info_template", "contact_info"):
         return copy.deepcopy(contact_info_template)
-    if template_name == "db_books":
+    if template_name in ("db_books", "db_book", "book", "books"):
         return copy.deepcopy(db_struct_books)
-    if template_name == "db_users":
+    if template_name in ("db_users", "db_user", "user", "users"):
         return copy.deepcopy(db_struct_users)
     raise NameError(f"Template for '{template_name}' not found")
 
