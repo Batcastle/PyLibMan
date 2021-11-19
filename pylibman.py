@@ -99,54 +99,6 @@ user_pipe.send(add)
 print(user_pipe.recv())
 
 
-get = common.get_template("get")
-get["filter"]["field"] = "uid"
-get["filter"]["compare"] = 1000
-
-user_pipe.send(get)
-print(json.dumps(user_pipe.recv(), indent=1))
-
-ch = common.get_template("change")
-ch["settings"]["search_term"] = "uid"
-ch["settings"]["search_value"] = 1000
-ch["settings"]["ch_field"] = "contact_info"
-ch["settings"]["new"] = common.get_template("contact_info_template")
-ch["settings"]["new"]["phone_numbers"] = ["828-850-2474"]
-ch["settings"]["new"]["emails"] = ["test@example.com"]
-
-user_pipe.send(ch)
-print(user_pipe.recv())
-
-delete = common.get_template("delete")
-delete["filter"]["field"] = "uid"
-delete["filter"]["compare"] = 1000
-
-user_pipe.send(get)
-print(json.dumps(user_pipe.recv(), indent=1))
-
-# user_pipe.send(delete)
-# print(user_pipe.recv())
-
-
-# DEMO BOOKS DB INTERFACE
-print("BOOKS DB INTERFACE DEMO")
-add = common.get_template('add')
-add["data"] = common.get_template("db_books")
-add["data"]["uid"] = 1000
-add["data"]["name"] = "Citizenship in the Community"
-add["data"]["check_out_history"] = []
-add["data"]["check_in_status"] = common.get_template("status")
-add["data"]["published"] = 2021
-
-book_pipe.send(add)
-print(book_pipe.recv())
-
-book_pipe.send(get)
-print(json.dumps(book_pipe.recv(), indent=1))
-
-# user_pipe.send(delete)
-# print(user_pipe.recv())
-
 while True:
     try:
         if ui_pipe.poll():
@@ -189,5 +141,3 @@ for each in procs:
     each.kill()
     each.terminate()
     each.join()
-time.sleep(3)
-os.remove("library.db")
