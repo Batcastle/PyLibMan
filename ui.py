@@ -877,13 +877,32 @@ Exiting now will cause any unsaved data to be lost.""")
         self.pipe.send(command)
         output = self.pipe.recv()
         if output["status"] == 1:
-            self.reset("")
+            self.add_book_success(db_struct["name"], db_struct["uid"])
         else:
             self.error()
 
     def error(self):
         """Error Dialog"""
         self.clear_window()
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>ERROR</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup("""<b>An error has occured.</b>""")
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("Continue")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        self.show_all()
 
     def gen_uid(self, widget):
         """Generate random UID"""
@@ -1101,6 +1120,39 @@ Exiting now will cause any unsaved data to be lost.""")
 
     def remove_user_ui(self, widget):
         """remove a user from the system: UI function"""
+        self.clear_window()
+
+        self.keys = {"enter": self.remove_user,
+                     "esc": self.reset}
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Remove User</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup("""<b>Waiting for User UID...</b>""")
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        uid = Gtk.Entry()
+        uid.set_placeholder_text("UID (Unique ID)")
+        uid = self._set_default_margins(uid)
+        self.grid.attach(uid, 1, 3, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("<-- Back")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        button = Gtk.Button.new_with_label("Find User")
+        button.connect("clicked", self.remove_user)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 2, 4, 1, 1)
+
+        self.show_all()
 
     def add_user(self, widget):
         """Add a new user to the system"""
@@ -1168,6 +1220,49 @@ Exiting now will cause any unsaved data to be lost.""")
 
         self.show_all()
 
+    def remove_user_success(self, uid):
+        """Tell administrator a new user has been successfully added"""
+        self.clear_window()
+
+        self.keys = {"enter": self.reset,
+                     "esc": self.reset}
+
+        if int(uid) == self.user["uid"]:
+            message = "Since you removed yourself, you will be logged out."
+            self.user = None
+        else:
+            message = ""
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Success!</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup(f"""
+        User with UID {uid} has been successfully removed!
+        {message}
+        """)
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("<-- Back To Main Menu")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        if self.user is not None:
+            button = Gtk.Button.new_with_label("Remove Another User")
+            button.connect("clicked", self.remove_user_ui)
+            button = self._set_default_margins(button)
+            self.grid.attach(button, 5, 4, 1, 1)
+
+            self.keys["enter"] = self.remove_user_ui
+
+        self.show_all()
+
     def add_book_success(self, name, uid):
         """Tell administrator a new book has been successfully added"""
         self.clear_window()
@@ -1203,7 +1298,65 @@ Exiting now will cause any unsaved data to be lost.""")
         self.show_all()
 
     def remove_user(self, widget):
-        """Remove a user from the system"""
+        """Confirm removing a user from the system"""
+        children = self.grid.get_children()
+        for each in children:
+            if "<class 'gi.repository.Gtk.Entry'>" == str(type(each)):
+                if each.get_placeholder_text() == "UID (Unique ID)":
+                    uid = each.get_text()
+                    break
+        self.clear_window()
+
+        self.keys = {"enter": self._remove_user,
+                     "esc": self.remove_user_ui}
+
+        if int(uid) == self.user["uid"]:
+            warning = "<b>WARNING: This is YOUR UID!!!</b>"
+        else:
+            warning = ""
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Confirmation</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup(f"""
+        Are you sure you want to remove user with uid {uid}?
+        {warning}
+        """)
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("Cancel")
+        button1.connect("clicked", self.remove_user_ui)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        button = Gtk.Button.new_with_label(f"Remove User {uid}")
+        button.connect("clicked", self._remove_user)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 5, 4, 1, 1)
+
+        self.show_all()
+
+
+    def _remove_user(self, widget):
+        """remove a user from the system"""
+        uid = int(widget.get_label().split(" ")[-1])
+        template = common.get_template("delete")
+        template["filter"]["field"] = "uid"
+        template["filter"]["compare"] = uid
+        command = {"table": "users", "command": template}
+        self.pipe.send(command)
+        output = self.pipe.recv()
+        if output["status"] == 1:
+            self.remove_user_success(uid)
+        else:
+            self.error()
+
 
     def edit_user_ui(self, widget):
         """Edit user info: UI function"""
