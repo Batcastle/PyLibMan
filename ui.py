@@ -1213,6 +1213,7 @@ Exiting now will cause any unsaved data to be lost.""")
 
 def show(pipe):
     """Show Main UI"""
+    common.set_procname("PLM-UI")
     window = PyLibMan_UI(pipe)
     window.set_decorated(True)
     window.set_resizable(False)

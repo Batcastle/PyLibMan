@@ -186,6 +186,7 @@ def __del_command__(input, db_name, db):
 
 def user_table(pipe):
     """Interface to interact with the 'user' table"""
+    common.set_procname("PLM-user-db")
     db = sql.connect(common.SETTINGS["db_name"])
     struct = get_struct("user", full=False)
     while True:
@@ -254,6 +255,7 @@ def user_table(pipe):
 
 def book_table(pipe):
     """Interface to interact with the 'book' table"""
+    common.set_procname("PLM-book-db")
     db = sql.connect(common.SETTINGS["db_name"])
     struct = get_struct("book", full=False)
     while True:

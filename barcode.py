@@ -27,6 +27,7 @@ import json
 import time
 import pyzbar.pyzbar as zbar
 import numpy as np
+import common
 
 
 def get_frame(webcam):
@@ -44,6 +45,7 @@ def get_barcode(frame):
 # down on memory usage.
 def barcode_scanner(pipe, webcam):
     """Barcode scanner process"""
+    common.set_procname("PLM-barcode")
     job = False
     while True:
         while True:

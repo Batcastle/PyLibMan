@@ -97,7 +97,7 @@ if len(tables) >= 1:
     for each in procs:
         each.start()
 
-
+common.set_procname("PLM-common")
 while True:
     try:
         if ui_pipe.poll():
