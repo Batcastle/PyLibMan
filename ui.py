@@ -920,7 +920,7 @@ Exiting now will cause any unsaved data to be lost.""")
         data = self.pipe.recv()
         print("Generating UID...")
         while True:
-            uid = random.randint(1000, 999999)
+            uid = random.randint(100000000, 999999999)
             print("Selecting UID: ", uid)
             if uid not in data:
                 break
