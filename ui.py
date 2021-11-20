@@ -24,7 +24,7 @@
 """UI for PyLibMan"""
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk
 import common
 import time
 import random
@@ -60,9 +60,9 @@ class PyLibMan_UI(Gtk.Window):
 
     def on_key_press_event(self, widget, event):
         """Handles keyy press events for window"""
-        if event.keyval == Gdk.KEY_Escape:
+        if event.keyval == 65307: #Esc key code
             self.keys["esc"]("clicked")
-        elif event.keyval == Gdk.KEY_Return:
+        elif event.keyval in (65421, 65293): # key codes for enter on both numpad and normal keyboard
             self.keys["enter"]("clicked")
 
 
