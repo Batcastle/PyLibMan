@@ -1134,8 +1134,74 @@ Exiting now will cause any unsaved data to be lost.""")
 
     def add_user_success(self, name, uid, privs):
         """Tell administrator a new user has been successfully added"""
+        self.clear_window()
+
+        self.keys = {"enter": self.add_user_ui,
+                     "esc": self.reset}
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Success!</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup(f"""
+        {name} has been successfully added as a {privs}!
+        Their UID is: {uid}
+
+        PLEASE WRITE DOWN THIS UID AS LOSS OF IT CONSTITUTES LOSS OF AN ACCOUNT.
+        """)
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("<-- Back To Main Menu")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        button = Gtk.Button.new_with_label("Add Another User")
+        button.connect("clicked", self.add_user_ui)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 5, 4, 1, 1)
+
+        self.show_all()
+
     def add_book_success(self, name, uid):
         """Tell administrator a new book has been successfully added"""
+        self.clear_window()
+
+        self.keys = {"enter": self.add_book_ui,
+                     "esc": self.reset}
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Success!</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup(f"""
+        {name} has been successfully added!
+        It's UID is: {uid}
+        """)
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("<-- Back To Main Menu")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        button = Gtk.Button.new_with_label("Add Another Book")
+        button.connect("clicked", self.add_book_ui)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 5, 4, 1, 1)
+
+        self.show_all()
+
     def remove_user(self, widget):
         """Remove a user from the system"""
 
