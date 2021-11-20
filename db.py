@@ -179,8 +179,9 @@ def __del_command__(input, db_name, db):
     try:
         db.execute(command)
         output = success
-    except:
+    except Exception as e:
         output = failure
+        traceback.print_exception(e)
     return output
 
 
