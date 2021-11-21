@@ -68,6 +68,9 @@ class PyLibMan_UI(Gtk.Window):
 
     def reset(self, widget):
         """make/remake tabs"""
+        if not (isinstance(self.book_uid, int) or (self.book_uid is None)):
+            self.book_uid = None
+
         children = self.page0.get_children()
         for each0 in children:
             self.page0.remove(each0)
@@ -206,6 +209,11 @@ class PyLibMan_UI(Gtk.Window):
         button = self._set_default_margins(button)
         self.page4.attach(button, 2, 3, 1, 1)
 
+        button = Gtk.Button.new_with_label("Generate QR Codes")
+        button.connect("clicked", self.gen_qr_code_ui)
+        button = self._set_default_margins(button)
+        self.page4.attach(button, 3, 2, 1, 1)
+
         # button = Gtk.Button.new_with_label("Edit Book Info")
         # button.connect("clicked", self.edit_book_ui)
         # button = self._set_default_margins(button)
@@ -218,6 +226,100 @@ class PyLibMan_UI(Gtk.Window):
                 self.admin_menu("clicked")
             else:
                 self.user_menu("clicked")
+
+    def gen_qr_code_ui(self, widget):
+        """Get UID to generate a QR code for"""
+        self.clear_window()
+
+        self.keys = {"esc": self.reset, "enter": self.gen_qr}
+
+        if not isinstance(self.book_uid, list):
+            self.book_uid = []
+
+        label = Gtk.Label()
+        label.set_markup("""<span size="x-large"><b>Generate QR Code</b></span>""")
+        label.set_justify(Gtk.Justification.CENTER)
+        label = self._set_default_margins(label)
+        self.grid.attach(label, 1, 1, 5, 1)
+
+        label1 = Gtk.Label()
+        label1.set_markup("""<b>Waiting for Book UID...</b>""")
+        label1.set_justify(Gtk.Justification.CENTER)
+        label1 = self._set_default_margins(label1)
+        self.grid.attach(label1, 1, 2, 5, 1)
+
+        uid = Gtk.Entry()
+        uid.set_placeholder_text("UID (Unique ID)")
+        uid = self._set_default_margins(uid)
+        self.grid.attach(uid, 1, 3, 5, 1)
+
+        button1 = Gtk.Button.new_with_label("<-- Back")
+        button1.connect("clicked", self.reset)
+        button1 = self._set_default_margins(button1)
+        self.grid.attach(button1, 1, 4, 1, 1)
+
+        button = Gtk.Button.new_with_label("Generate QR Code")
+        button.connect("clicked", self.gen_qr)
+        button = self._set_default_margins(button)
+        self.grid.attach(button, 2, 4, 1, 1)
+
+        button2 = Gtk.Button.new_with_label("Print QR Code")
+        button2.connect("clicked", self.print_qr)
+        button2 = self._set_default_margins(button2)
+        self.grid.attach(button2, 3, 4, 1, 1)
+
+        self.show_all()
+
+    def print_qr(self, widget):
+        """Prepare QR codes for printing"""
+        command = {"table": "barcode", "command": common.get_template("print")}
+        command["command"]["paths"] = self.book_uid
+        self.book_uid = []
+        children = self.grid.get_children()
+        for each in children:
+            if "<class 'gi.overrides.Gtk.Label'>" == str(type(each)):
+                if (("UID" in each.get_text()) or ("Stored At" in each.get_text()) or ("Printed" in each.get_text())):
+                    details = each
+                    break
+        self.pipe.send(command)
+        response = self.pipe.recv()
+        if isinstance(response, list):
+            response = "\n".join(response)
+        details.set_markup(f"""<b>QR Codes Ready to Print!</b>
+
+Files are stored At:
+{response}
+
+<b>You may continue making QR Codes.</b>""")
+
+        self.show_all()
+
+    def gen_qr(self, widget):
+        """Grab UID and generate QR code"""
+        command = {"table": "barcode", "command": common.get_template("make")}
+        command["command"]["type"] = "book"
+        children = self.grid.get_children()
+        for each in children:
+            if "<class 'gi.overrides.Gtk.Label'>" == str(type(each)):
+                if (("UID" in each.get_text()) or ("Stored At" in each.get_text()) or ("Printed" in each.get_text())):
+                    details = each
+                    break
+        for each in children:
+            if "<class 'gi.repository.Gtk.Entry'>" == str(type(each)):
+                if each.get_placeholder_text() == "UID (Unique ID)":
+                    try:
+                        command["command"]["uid"] = int(each.get_text())
+                    except TypeError:
+                        details.set_markup("""<b>Not a Valid UID. Try Again.</b>""")
+                        self.show_all()
+                        return
+                    break
+        self.pipe.send(command)
+        response = self.pipe.recv()
+        self.book_uid.append(response)
+        details.set_markup(f"""<b>QR Code Stored At: {response}</b>""")
+
+        self.show_all()
 
     def view_titles_ui(self, widget):
         """View Book Titles, or order to quickly find a specific book"""

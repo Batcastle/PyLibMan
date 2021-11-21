@@ -28,8 +28,9 @@ import time
 import pyzbar.pyzbar as zbar
 import numpy as np
 import qrcode
-import PIL as img
+from PIL import Image as img
 import os
+import subprocess
 import common
 
 
@@ -53,10 +54,44 @@ def generate_barcode(type, uid):
     qr.make(fit=True)
     image = qr.make_image(fill_color="black", back_color="white")
     if not os.path.isdir(path):
+        print("MAKING DIR")
         os.mkdir(path)
     image.save(f"{path}/{type}_{uid}.png")
+    print(f"Saved file to {path}/{type}_{uid}.png")
     return f"{path}/{type}_{uid}.png"
 
+
+def print_barcode(paths):
+    """Print QR codes"""
+    images = []
+    recursion_point = None
+    for each in paths:
+        images.append(img.open(each))
+    canvas = img.new("RGB", (2550, 3300), color=(255, 255, 255))
+    # we can user canvas.paste() to paste images into the canvas, then just save the canvas as a file
+    attach_point = [0, 0]
+    canvas.paste(images[0], tuple(attach_point))
+    attach_point = [5, 0]
+    for each in images[1:]:
+        size = each.size
+        attach_point[0] = size[0] + attach_point[0] + 5
+        if ((size[0] + attach_point[0] + 5) >= 2550): # if the image goes over the right edge, wrap
+            attach_point[0] = 0
+            attach_point[1] = attach_point[1] + size[1] + 5
+        print(attach_point)
+        if attach_point[1] >= 3300: # if the image goes over the bottom edge, stop. Mark recursion point
+            recursion_point = image.index(each)
+            break
+        canvas.paste(each, tuple(attach_point))
+        attach_point[0] = attach_point[0] + 5
+    output = f"{int(time.time())}.png"
+    canvas.save(output)
+    if recursion_point == None:
+        return output
+    add = print_barcode(paths[recursion_point:])
+    if isinstance(add, list):
+        return [output] + add
+    return [output, add]
 
 
 # this is just a basic barcode scanner that reads in JSON data
@@ -68,11 +103,16 @@ def barcode_scanner(pipe, webcam):
     job = False
     while True:
         while True:
+            loop = False
             try:
                 data = get_frame(webcam)
             except cv2.error:
                 print("Camera disabled. Sleeping...")
-                time.sleep(20)
+                time.sleep(1)
+                loop = True
+            if pipe.poll():
+                break
+            if loop:
                 continue
             detected_barcodes = get_barcode(data)
             if detected_barcodes != []:
@@ -92,11 +132,13 @@ def barcode_scanner(pipe, webcam):
                         if (("type" in keys) and ("uid" in keys)):
                             output = {"type": data["type"], "uid": data["uid"]}
             elif isinstance(job, dict):
+                print("Abnormal job!")
                 if job["cmd_type"] == "make_qr":
                     # generate QR Code
-                    output = make_qr(job["type"], job["uid"])
+                    print("Making QR!")
+                    output = generate_barcode(job["type"], job["uid"])
                 elif job["cmd_type"] == "print_qr":
-                    # open print dialog to print QR code
-                    pass
+                    print("Generating images for printing!")
+                    output = print_barcode(job["paths"])
             pipe.send(output)
             job = None
