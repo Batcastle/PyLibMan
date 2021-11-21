@@ -91,6 +91,11 @@ delete_template = {"cmd_type": "del",
                               "compare": None}}
 add_template = {"cmd_type": "add",
                 "data": None} # define this field following the db_struct template for the table in question
+make_qr_template = {"cmd_type": "make_qr",
+                    "type": None,
+                    "uid": None}
+print_qr_template = {"cmd_type": "print_qr",
+                     "paths": []} # list of file paths to PNGs to print
 
 
 def get_template(template_name):
@@ -119,6 +124,10 @@ def get_template(template_name):
         return copy.deepcopy(db_struct_books)
     if template_name in ("db_users", "db_user", "user", "users"):
         return copy.deepcopy(db_struct_users)
+    if template_name in ("make_qr", "make"):
+        return copy.deepcopy(make_qr_template)
+    if template_name in ("print_qr", "print"):
+        return copy.deepcopy(print_qr_template)
     raise NameError(f"Template for '{template_name}' not found")
 
 

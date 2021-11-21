@@ -27,6 +27,9 @@ import json
 import time
 import pyzbar.pyzbar as zbar
 import numpy as np
+import qrcode
+import PIL as img
+import os
 import common
 
 
@@ -38,6 +41,22 @@ def get_frame(webcam):
 def get_barcode(frame):
     """Get barcodes in frame."""
     return zbar.decode(frame)
+
+
+def generate_barcode(type, uid):
+    """Generate a QR Code"""
+    # Generate QR Code
+    path = "/tmp/qr_codes"
+    data = {"type": type, "uid": uid}
+    qr = qrcode.QRCode()
+    qr.add_data(json.dumps(data))
+    qr.make(fit=True)
+    image = qr.make_image(fill_color="black", back_color="white")
+    if not os.path.isdir(path):
+        os.mkdir(path)
+    image.save(f"{path}/{type}_{uid}.png")
+    return f"{path}/{type}_{uid}.png"
+
 
 
 # this is just a basic barcode scanner that reads in JSON data
@@ -60,17 +79,24 @@ def barcode_scanner(pipe, webcam):
                 break
         if pipe.poll():
             job = pipe.recv()
-            for barcode in detected_barcodes:
-                data = barcode.data.decode()
-                try:
-                    data = json.loads(data)
-                except json.decoder.JSONDecodeError:
-                    continue
-                    # basic sanitation
-                if isinstance(data, dict):
-                    keys = data.keys()
-                    if (("type" in keys) and ("uid" in keys)):
-                        output = {"type": data["type"], "uid": data["uid"]}
-                        if job:
-                            pipe.send(output)
-                            job = False
+            if job == "get_barcode":
+                for barcode in detected_barcodes:
+                    data = barcode.data.decode()
+                    try:
+                        data = json.loads(data)
+                    except json.decoder.JSONDecodeError:
+                        continue
+                        # basic sanitation
+                    if isinstance(data, dict):
+                        keys = data.keys()
+                        if (("type" in keys) and ("uid" in keys)):
+                            output = {"type": data["type"], "uid": data["uid"]}
+            elif isinstance(job, dict):
+                if job["cmd_type"] == "make_qr":
+                    # generate QR Code
+                    output = make_qr(job["type"], job["uid"])
+                elif job["cmd_type"] == "print_qr":
+                    # open print dialog to print QR code
+                    pass
+            pipe.send(output)
+            job = None

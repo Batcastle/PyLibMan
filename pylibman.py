@@ -106,7 +106,7 @@ while True:
                 break
             elif ui_request == "get_barcode":
                 while True:
-                    bar_pipe.send(True)
+                    bar_pipe.send("get_barcode")
                     data = bar_pipe.recv()
                     if data["type"] in ("user", "users"):
                         data = qr_query(data, user_pipe)
@@ -127,7 +127,9 @@ while True:
                     user_pipe.send(ui_request["command"])
                     book_pipe.send(ui_request["command"])
                     ui_pipe.send((user_pipe.recv(), book_pipe.recv()))
-
+                elif ui_request["table"] == "barcode":
+                    bar_pipe.send(ui_request["command"])
+                    ui_pipe.send(bar_pipe.recv())
         else:
             time.sleep(1)
             continue
